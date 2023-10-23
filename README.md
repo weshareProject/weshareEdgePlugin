@@ -1,0 +1,2 @@
+# weshareEdgePlugin
+weshare Edge plugin
