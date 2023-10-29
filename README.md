@@ -1,2 +1,13 @@
-# weshareEdgePlugin
-weshare Edge plugin
+# weshareDemo
+
+
+
+已经完成:
+
+笔记添加功能,笔记本地存储功能
+
+
+
+未完善:
+
+高亮功能
