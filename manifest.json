@@ -36,6 +36,7 @@
      "js": ["content/highlight.js","content/note.js","content/message.js"],
 	 "css":["content/highlight.css","content/note.css"]
    }
-  ]
+  ],
+  "options_page":"option/option.html"
   
 }
