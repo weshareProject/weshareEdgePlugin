@@ -24,9 +24,9 @@ let NoteManager=(()=>{
 	};
 	
 	//初始化
-	function init(){
+	async function init(){
 		document.body.setAttribute("ondragover", "event.preventDefault()");
-		loadNote();
+		await loadNote();
 	}
 	
 	//生成uid
@@ -35,11 +35,11 @@ let NoteManager=(()=>{
 	}
 	
 	//保存数据
-	function saveNote(storageOption=STORAGE_OPTION.AUTO){
+	async function saveNote(storageOption=STORAGE_OPTION.AUTO){
 		if(storageOption==STORAGE_OPTION.LOCAL){
 			console.log(NoteList);
-			localStorage.setItem("weshareNote-"+window.location.pathname,JSON.stringify(NoteList));
-			localStorage.setItem("weshareNoteLastSave",Date.now());
+			await chrome.runtime.sendMessage({op:"saveNote",url:window.location.href,notes:JSON.stringify(NoteList)});
+			
 		}else if(storageOption==STORAGE_OPTION.CLOUD){
 			//TODO
 		}else{
@@ -48,9 +48,10 @@ let NoteManager=(()=>{
 	}
 	
 	//载入数据
-	function loadNote(storageOption=STORAGE_OPTION.AUTO){
+	async function loadNote(storageOption=STORAGE_OPTION.AUTO){
 		if(storageOption==STORAGE_OPTION.LOCAL){
-			let nt=localStorage.getItem("weshareNote-"+window.location.pathname);
+			let nt=await chrome.runtime.sendMessage({op:"loadNote",url:window.location.href});
+			console.log(nt);
 			if(nt)NoteList=JSON.parse(nt);
 		
 			console.log(NoteList);
@@ -81,16 +82,23 @@ let NoteManager=(()=>{
 		}
 	}
 	
+
 	//新建note
-	function newNote(po={x:135,y:135}){
+	function newNote(po={x:100,y:100}){
 		let uid=createUID();
 		let sta=NOTE_STATUS.NEW;
 		const scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
 		const scrollLeft = document.documentElement.scrollLeft || document.body.scrollLeft;
-	
-		let content="weshareNote";
-		let top_=Number(scrollTop)+Number(po.y-35)+"px";
-		let left=Number(scrollLeft)+Number(po.x-35)+"px";
+		
+		//检验是否在页面范围内
+		if(po.x<=0||po.y<=0){
+			po.x=100;
+			po.y=100;
+		}
+		
+		let content="text here";
+		let top_=Number(scrollTop)+Number(po.y)+"px";
+		let left=Number(scrollLeft)+Number(po.x)+"px";
 		let noteojb={"uid":uid,"content":content,"position":{"top":top_,"left":left},"permission":"private","ownerId":"000000000000","ownerName":"me","status":sta};
 		NoteList[uid]=noteojb;
 		NoteManager.save();
