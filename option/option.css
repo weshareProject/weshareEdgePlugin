@@ -16,3 +16,7 @@ body{
 .blackborder{
 	border:0.2rem solid black;
 }
+
+.content{
+	width:50vw;
+}

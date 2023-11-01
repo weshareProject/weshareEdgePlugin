@@ -4,23 +4,16 @@ function $(elemId){
 
 async function getCurrentTab() {
   let queryOptions = { active: true , currentWindow:true };
-  let [tab] = await chrome.tabs.query(queryOptions);
+  let tab = await chrome.tabs.query(queryOptions);
   return tab;
 }
 
-(async ()=>{
-	let v=await getCurrentTab()
-	$('url').innerHTML=v['url'];
-})();
-
-
-
-$('nl').addEventListener("click",()=>{
-	
-	chrome.tabs.query({active:true,currentWindow:true},response=>{
-		
-		chrome.tabs.sendMessage(response[0].id,{op:"addNote",position:"default"});
-	});
+//添加笔记
+$('addnote').addEventListener("click",()=>{
+	(async ()=>{
+		let tab=await getCurrentTab()
+		chrome.tabs.sendMessage(tab[0].id,{op:"addNote",position:"default"});
+	})();
 });
 
 $('setting').addEventListener('click',()=>{

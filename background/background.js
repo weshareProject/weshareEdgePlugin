@@ -26,8 +26,14 @@ chrome.contextMenus.onClicked.addListener((info,tab)=>{
 //笔记管理员
 let AllNoteManager=(()=>{
 	//网站笔记表
-	//{网站url：笔记条数，...}
+	//{网站url:{url:网页url,title:网页title,num:笔记条数,cloud:是否云同步}，...}
 	let NoteWebUrl={};
+	
+	//云同步常量
+	const CLOUD={
+		SAVED:0,//已经云同步保存
+		CHANGED:1//有变更尚未云同步
+	}
 	
 	//存储api
 	let Storage=chrome.storage.local;
@@ -36,7 +42,7 @@ let AllNoteManager=(()=>{
 	async function init(){
 		let tp=await Storage.get("weshareNoteWebUrl");
 		if(tp['weshareNoteWebUrl'])NoteWebUrl=JSON.parse(tp['weshareNoteWebUrl']);
-		//console.log(NoteWebUrl);
+		console.log(NoteWebUrl);
 	}
 	
 	//保存NoteWebUrl表
@@ -46,16 +52,26 @@ let AllNoteManager=(()=>{
 	}
 	
 	//保存指定url的笔记
-	async function saveNote(url,notes){
+	async function saveNote(urlObj,notes){
+		console.log(urlObj);
 		let tpnote=JSON.parse(notes);
-		let num=Object.keys(tpnote).length;
-		NoteWebUrl[url]=num;
-		if(num<=0)delete NoteWebUrl[url];
+		let num=urlObj.num;
+		let url=urlObj.url;
+		let title=urlObj.title;
+		NoteWebUrl[url]={url:url,title:title,num:num,cloud:CLOUD.CHANGED};
+		if(num<=0){
+			delete NoteWebUrl[url];
+			//TODO 同步时需要标记移除,同步后再delete
+		}
 		saveNoteWebUrl();
 		
 		let saveObj={};
 		saveObj["weshareNote-"+url]=notes;
 		await Storage.set(saveObj);
+		if(num<=0){
+			let ky='weshareNote-'+url;
+			Storage.remove(ky);
+		}
 		//console.log(saveObj);
 	}
 	
@@ -72,10 +88,16 @@ let AllNoteManager=(()=>{
 		return res;
 	}
 	
+	//获取NoteWebUrl
+	function getNoteWebUrl(){
+		return JSON.stringify(NoteWebUrl);
+	}
+	
 	return {
 		init:init,
 		saveNote:saveNote,
-		loadNote:loadNote
+		loadNote:loadNote,
+		getNoteWebUrl:getNoteWebUrl
 	}
 })();
 AllNoteManager.init();
@@ -90,12 +112,14 @@ chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
 			tp=AllNoteManager.loadNote(url);
 		}
 	}else if(message.op=="saveNote"){
-		let url=message.url;
+		let urlObj=message.urlObj;
 		let notes=message.notes;
-		if(url&&notes){
-			AllNoteManager.saveNote(url,notes);
+		if(urlObj && notes){
+			AllNoteManager.saveNote(urlObj,notes);
 			tp="save finish";
 		}
+	}else if(message.op=="getNoteWebUrl"){
+		tp=AllNoteManager.getNoteWebUrl();
 	}
 	
 	(async()=>{
