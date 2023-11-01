@@ -196,6 +196,7 @@ function NoteFactory(noteObj){
 			noteObj['status']=sta;
 			noteObj["content"]=tg.innerHTML;
 			NoteManager.save();
+			NoteParentDiv.title=tg.innerHTML;
 		}
 	}
 	//为元素添加编辑保存功能
@@ -283,6 +284,8 @@ function NoteFactory(noteObj){
 		addEditFunc(NoteBody);//添加编辑功能
 		HiddenDiv.push(NoteBody);
 		
+		NoteParentDiv.title=NoteBody.innerHTML;
+		
 		//隐藏/展开图标
 		let hidBtn=document.createElement('div');
 		hidBtn.classList.add('weshareNoteIcon');
@@ -295,6 +298,7 @@ function NoteFactory(noteObj){
 		delBtn.classList.add('weshareNoteIcon');
 		delBtn.innerHTML="🗑️";
 		addDeleteFunc(delBtn);
+		delBtn.title="双击删除笔记";
 		HiddenDiv.push(delBtn);
 		
 		//放入父div中
@@ -330,12 +334,11 @@ let NOTE_OPTION=(()=>{
 	
 	//根据css设置对象为特定元素设置style
 	function setElement(elem){
-		let sty="";
 		for(let i in css_options){
-			sty+="--"+i+":";
-			sty+=css_options[i]+";";
+			let k="--"+i;
+			let v=css_options[i];
+			elem.style.setProperty(k,v);
 		}
-		elem.style=sty;
 	}
 
 	//初始化

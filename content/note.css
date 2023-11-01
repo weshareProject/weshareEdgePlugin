@@ -24,7 +24,7 @@
 	width:1.5em;
 	height:1.5em;
 	
-	border:0.2em solid;
+	border:0.1em solid;
 	border-color:var(--bordercolor);
 	background-color:var(--bgcolor);
 	
@@ -44,7 +44,7 @@
 	max-width:20em;
 	padding:0.3em;
 	
-	border:0.2em solid;
+	border:0.1em solid;
 	border-color:var(--bordercolor);
 	background-color:var(--bgcolor);
 	border-radius:0.6em;
