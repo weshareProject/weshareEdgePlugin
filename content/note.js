@@ -55,7 +55,7 @@ let NoteManager=(()=>{
 	//记录所有note
 	let NoteList={};
 	/*
-	单个笔记基本格式:	uid:{"uid":uid,"content":内容,position位置:{top:top坐标,left:left坐标,type:类型},"permission":private/public,"ownerId":创建者，"ownerName":创建者昵称,status:状态};
+	单个笔记基本格式:	uid:{"uid":uid,"content":内容,position位置:{top:top坐标,left:left坐标,type:类型},"permission":private/public,"ownerId":创建者，"ownerName":创建者昵称,status:状态,url:所在网页url,webtitle:所在网页title,createtime:创建时间};
 	*/
 	
 	//存储设置常量
@@ -130,9 +130,10 @@ let NoteManager=(()=>{
 	}
 	
 	//删除note
-	function deleteNote(noteObj){
+	async function deleteNote(noteObj){
 		let uid=noteObj["uid"];
 		if(NoteList[uid]){
+			await chrome.runtime.sendMessage({op:"deleteNote",noteObj:NoteList[uid]});//发送到background
 			delete NoteList[uid];
 		}
 	}
@@ -154,7 +155,7 @@ let NoteManager=(()=>{
 		let content="weshareNote";
 		let top_=Number(scrollTop)+Number(po.y)+"px";
 		let left=Number(scrollLeft)+Number(po.x)+"px";
-		let noteojb={"uid":uid,"content":content,"position":{"top":top_,"left":left},"permission":"private","ownerId":"000000000000","ownerName":"me","status":sta};
+		let noteojb={"uid":uid,"content":content,"position":{"top":top_,"left":left},"permission":"private","ownerId":"000000000000","ownerName":"me","status":sta,"url":window.location.href,"webtitle":document.title,"createtime":Date.now()};
 		NoteList[uid]=noteojb;
 		NoteManager.save();
 		
@@ -259,12 +260,12 @@ function NoteFactory(noteObj){
 	
 	//----删除功能begin----
 	//删除笔记功能
-	function deleteNote(event){
+	async function deleteNote(event){
 		let sta=NOTE_STATUS.DELETE;
 		noteObj['status']=sta;
 		
-		//TODO:同步需要移除下面这行
-		NoteManager.deleteNote(noteObj);
+		await chrome.runtime.sendMessage({op:"noaction"});
+		await NoteManager.deleteNote(noteObj);
 		
 		NoteManager.save();
 		document.body.removeChild(NoteParentDiv);

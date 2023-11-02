@@ -161,6 +161,7 @@ async function getNoteWebUrl(){
 	let resp=await chrome.runtime.sendMessage({op:"getNoteWebUrl"});
 	return resp;
 }
+//展示记了笔记的网站
 async function weburlInit(){
 	let tp=await getNoteWebUrl();
 	let noteweb=$('noteweb');
@@ -188,3 +189,9 @@ async function weburlInit(){
 	await chrome.runtime.sendMessage({op:"noaction"});//唤醒background
 	await weburlInit();
 })();
+
+//打开回收站
+$('recycleBin').onclick=async ()=>{
+	await chrome.runtime.sendMessage({op:"noaction"});//唤醒background
+	chrome.tabs.create({url:"/option/recycleBin.html"});
+};

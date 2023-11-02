@@ -35,7 +35,7 @@ body{
 /*设置按钮*/
 .setBtn{
 	display:inline-block;
-	width:5rem;
+	min-width:5rem;
 	height:1.4rem;
 	padding:0.2rem;
 	margin-right:1rem;
@@ -94,7 +94,7 @@ body{
 	overflow:hidden;
 	
 }
-#noteweb{
+.webcontent{
 	min-height:20em;
 	width:540px;
 	display:flex;
@@ -102,4 +102,13 @@ body{
 	align-content: flex-start;
 	justify-content:center;
 	border-radius:1rem;
+}
+
+
+
+a{
+	color:blue;
+}
+a:hover{
+	color:purple;
 }
