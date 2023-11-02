@@ -369,6 +369,7 @@ function NoteFactory(noteObj){
 
 //整个界面初始化
 (async function init(){
+	await chrome.runtime.sendMessage({op:"noaction"});//唤醒一下background
 	await NOTE_OPTION.init();//必须先初始化设置
 	await NoteManager.init();
 })();

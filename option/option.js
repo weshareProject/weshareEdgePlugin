@@ -3,8 +3,6 @@ function $(id){
 }
 
 
-//css样式基础尺寸
-const CSS_BASESIZE=[14,16,18,20,24];
 //设置存储
 const OPTION_STORAGE=chrome.storage.sync;
 
@@ -38,19 +36,12 @@ $('visiblehid').onclick=async ()=>{
 })();
 
 
-
-
-
-
-
-
-
-
-
-
-//设置按钮生成
+//----尺寸设置begin----
+//css样式基础尺寸
+const CSS_BASESIZE=[14,16,18,20,24];
+//尺寸设置按钮生成
 //btnObj={attr:设置按钮对应的设置属性,value:设置的数值,showval:展示的数值}
-function BtnFactory(btnObj){
+function sizeBtnFactory(btnObj){
 	let attr=btnObj.attr;
 	let value=btnObj.value;
 	let showval=btnObj.showval
@@ -79,7 +70,6 @@ function BtnFactory(btnObj){
 	
 	return btn;
 }
-
 //生成图标大小设定
 (async function iconSizeSetting(){
 	$('iconsize').innerHTML="";
@@ -89,11 +79,10 @@ function BtnFactory(btnObj){
 	for(let i in CSS_BASESIZE){
 		let value=CSS_BASESIZE[i]+"px";
 		let showval=CSS_BASESIZE[i]*1.5+"px";
-		let btn=BtnFactory({attr:"iconsize",value:value,showval:showval});
+		let btn=sizeBtnFactory({attr:"iconsize",value:value,showval:showval});
 		if(value==iconsize)btn.click();
 	}
 })();
-
 //生成文字大小设定
 (async function fontSizeSetting(){
 	$('fontsize').innerHTML="";
@@ -103,37 +92,99 @@ function BtnFactory(btnObj){
 	for(let i in CSS_BASESIZE){
 		let value=CSS_BASESIZE[i]+"px";
 		let showval=CSS_BASESIZE[i]+"px";
-		let btn=BtnFactory({attr:"fontsize",value:value,showval:showval});
+		let btn=sizeBtnFactory({attr:"fontsize",value:value,showval:showval});
 		if(value==fontsize)btn.click();
 	}
 })();
+//----尺寸设置end----
+
+
+
+//----颜色设置begin----
+//需要设置的颜色属性
+const CSS_COLORATTR=["bordercolor","bgcolor","fontcolor"];
+const CSS_COLORATTR_DESCRIE={"bordercolor":"边框颜色","bgcolor":"背景颜色","fontcolor":"字体颜色"};
+//颜色设置按钮生成
+//cbtnObj={attr:设置属性,value:属性值,showval:按钮上展示的内容}
+function colorBtnFactory(cbtnObj){
+	let attr=cbtnObj.attr;
+	let value=cbtnObj.value;
+	let showval=cbtnObj.showval;
+	
+	//看到的假按钮
+	let fakebtn=document.createElement('div');
+	fakebtn.classList.add('setBtn');
+	fakebtn.innerHTML=showval;
+	//实际的真按钮
+	let truebtn=document.createElement('input');
+	truebtn.type="color";
+	truebtn.classList.add('hidden');
+	truebtn.value=value;
+	//绑定二者
+	fakebtn.onclick=()=>{truebtn.click()};
+	//变化存储
+	truebtn.onchange=async ()=>{
+		let newval=truebtn.value;
+		$('previewDiv').style.setProperty("--"+attr,newval);
+		let sav={};
+		sav[attr]=newval;
+		console.log(sav);
+		await OPTION_STORAGE.set(sav);
+	};
+	
+	//放入面板
+	$('colorset').appendChild(fakebtn);
+	$('colorset').appendChild(truebtn);
+}
+//载入颜色设置
+(async ()=>{
+	let colors={"bordercolor":"black","bgcolor":"white","fontcolor":"black"};
+	for(let i=0;i<CSS_COLORATTR.length;i++){
+		let nattr=CSS_COLORATTR[i];
+		let tp=await OPTION_STORAGE.get(nattr);
+		if(tp[nattr])colors[nattr]=tp[nattr];
+	}
+	
+	for(let attr in colors){
+		colorBtnFactory({attr:attr,value:colors[attr],showval:CSS_COLORATTR_DESCRIE[attr]});
+		$('previewDiv').style.setProperty("--"+attr,colors[attr]);
+	}
+})();
+//----颜色设置end----
+
+
+
 
 
 //获取有笔记的web的url
 async function getNoteWebUrl(){
 	let resp=await chrome.runtime.sendMessage({op:"getNoteWebUrl"});
-	let res=JSON.parse(resp);
-	return res;
+	return resp;
 }
-
-(async ()=>{
+async function weburlInit(){
 	let tp=await getNoteWebUrl();
 	let noteweb=$('noteweb');
-	if(Object.keys(tp).length<=0){
+	if(tp=="{}"){
 		noteweb.innerHTML="<div style='color:red;font-size:1.5rem;'>暂无笔记</div>";
-	}
-	for(let i in tp){
-		let it=tp[i];
-		let url=it["url"];
-		let title=it['title'];
-		let num=it['num']
-		let dv=document.createElement('div');
-		dv.innerHTML="<span style='color:blue'>["+num+"笔记]</span>"+title;
-		dv.title=url;
-		dv.onclick=()=>{
-			chrome.tabs.create({url:url});
+	}else{
+		tp=JSON.parse(tp);
+		for(let i in tp){
+			let it=tp[i];
+			let url=it["url"];
+			let title=it['title'];
+			let num=it['num']
+			let dv=document.createElement('div');
+			dv.innerHTML="<span style='color:blue'>["+num+"笔记]</span>"+title;
+			dv.title=url;
+			dv.onclick=()=>{
+				chrome.tabs.create({url:url});
+			}
+			dv.classList.add("webitem");
+			noteweb.appendChild(dv);
 		}
-		dv.classList.add("webitem");
-		noteweb.appendChild(dv);
 	}
+}
+(async ()=>{
+	await chrome.runtime.sendMessage({op:"noaction"});//唤醒background
+	await weburlInit();
 })();
