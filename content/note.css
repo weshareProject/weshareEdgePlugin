@@ -1,27 +1,62 @@
-.weshareNote{
+
+/*笔记最外层容器*/
+.weshareNoteParentDiv{
 	position:absolute;
+	display:block;
+	box-sizing:content-box;
+	--fontsize:16px;/*字体尺寸*/
+	--iconsize:16px;/*图标尺寸*/
+	--bordercolor:black;/*边框颜色*/
+	--bgcolor:white;/*背景颜色*/
+	--fontcolor:black;/*字体颜色*/
+	font-size:0;
+	line-height:var(--iconsize);
 	
-	padding:5px 5px 5px 5px;
 	margin:0;
-	
-	min-height:14px;
-	max-height:400px;
-	min-width:70px;
-	max-width:400px;
-	
-	
-	font-size:14px;
-	border:2px solid black;
-	border-radius:4px;
-	background-color:white;
+	padding:0;
 	
 	/* (: */
 	z-index:2147483647;
+	
 }
 
-.weshareNote::before{
-	content:attr(data-permission)' note from 'attr(data-owner-name);
+/*笔记的操作小图标*/
+.weshareNoteIcon{
+	--basedisplay:inline-block;
+	margin:0;
+	display:inline-block;
+	font-size:var(--iconsize);
+	line-height:1.5em;
+	width:1.5em;
+	height:1.5em;
+	box-sizing:content-box;
+	border:0.1em solid;
+	border-color:var(--bordercolor);
+	background-color:var(--bgcolor);
+	
+	border-radius:50%;
+	
+	text-align:center;
+}
+
+/*笔记的可编辑区域*/
+.weshareNoteBody{
+	--basedisplay:block;
+	margin:0;
 	display:block;
-	font-size:14px;
-	color:blue;
+	font-size:var(--fontsize);
+	line-height:1em;
+	min-height:1em;
+	min-width:5em;
+	max-height:10em;
+	max-width:20em;
+	padding:0.3em;
+	box-sizing:content-box;
+	border:0.1em solid;
+	border-color:var(--bordercolor);
+	background-color:var(--bgcolor);
+	border-radius:0.6em;
+	color:var(--fontcolor);
+	
+	overflow:auto;
 }
