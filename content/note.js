@@ -1,3 +1,45 @@
+//笔记设置读取
+const NOTE_OPTION=(()=>{
+	//设置存储
+	const OPTION_STORAGE=chrome.storage.sync;
+	//css设置对象的键
+	const CSS_OPTION_KEYS=["fontsize","iconsize","bordercolor","bgcolor","fontcolor"];
+	//css设置对象
+	let css_options={};
+	//根据css设置对象为特定元素设置style
+	function setElement(elem){
+		for(let i in css_options){
+			let k="--"+i;
+			let v=css_options[i];
+			elem.style.setProperty(k,v);
+		}
+	}
+	//页面载入时是否展开笔记设置
+	let visible_option=["hid"];
+	//初始化
+	async function init(){
+		//读取css设置
+		for(let i=0;i<CSS_OPTION_KEYS.length;i++){
+			let nkey=CSS_OPTION_KEYS[i];
+			let rd=await OPTION_STORAGE.get(nkey);
+			if(rd[nkey]){
+				css_options[nkey]=rd[nkey];
+			}
+		}
+		//读取自动展开设置
+		let tp=await OPTION_STORAGE.get("visible_option");
+		if(tp['visible_option'])visible_option[0]=tp['visible_option'];
+		
+	}
+	
+	return {
+		init:init,
+		CSS_OPTIONS:css_options,
+		setElement:setElement,
+		VISIBLE_OPTIONS:visible_option
+	}
+})();
+
 
 //笔记状态常量
 const NOTE_STATUS={
@@ -40,7 +82,7 @@ let NoteManager=(()=>{
 			console.log(NoteList);
 			let num=Object.keys(NoteList).length;
 			let urlObj={url:window.location.href,title:document.title,num:num};
-			console.log(urlObj);
+			//console.log(urlObj);
 			await chrome.runtime.sendMessage({op:"saveNote",urlObj:urlObj,notes:JSON.stringify(NoteList)});
 			
 		}else if(storageOption==STORAGE_OPTION.CLOUD){
@@ -55,7 +97,6 @@ let NoteManager=(()=>{
 	async function loadNote(storageOption=STORAGE_OPTION.AUTO){
 		if(storageOption==STORAGE_OPTION.LOCAL){
 			let nt=await chrome.runtime.sendMessage({op:"loadNote",url:window.location.href});
-			console.log(nt);
 			if(nt)NoteList=JSON.parse(nt);
 		
 			console.log(NoteList);
@@ -63,7 +104,16 @@ let NoteManager=(()=>{
 				if(NoteList[it]['status']==NOTE_STATUS.DELETE){
 					continue;
 				}
-				NoteFactory(NoteList[it]).createNoteDiv();
+				let note=NoteFactory(NoteList[it])
+				note.createNoteDiv();//建立div块
+				
+				//console.log(NOTE_OPTION.VISIBLE_OPTIONS);
+				//是否展开
+				if(NOTE_OPTION.VISIBLE_OPTIONS[0]=="show"){
+					note.show();
+				}else{
+					note.hid();
+				}
 			}
 		}else if(storageOption==STORAGE_OPTION.CLOUD){
 			//由于云存储转移到background,此处不进行操作了
@@ -123,8 +173,6 @@ let NoteManager=(()=>{
 	}
 	
 })();
-
-NoteManager.init();
 
 
 //NoteFactory用于创建单个Note相关的DIV并维护
@@ -319,42 +367,8 @@ function NoteFactory(noteObj){
 	}
 }
 
-
-//笔记设置读取
-let NOTE_OPTION=(()=>{
-	
-	//设置存储
-	const OPTION_STORAGE=chrome.storage.sync;
-	
-	//css设置对象的键
-	const CSS_OPTION_KEYS=["fontsize","iconsize","bordercolor","bgcolor","fontcolor"];
-	
-	//css设置对象
-	let css_options={};
-	
-	//根据css设置对象为特定元素设置style
-	function setElement(elem){
-		for(let i in css_options){
-			let k="--"+i;
-			let v=css_options[i];
-			elem.style.setProperty(k,v);
-		}
-	}
-
-	//初始化
-	async function init(){
-		for(let i=0;i<CSS_OPTION_KEYS.length;i++){
-			let nkey=CSS_OPTION_KEYS[i];
-			let rd=await OPTION_STORAGE.get(nkey);
-			if(rd[nkey]){
-				css_options[nkey]=rd[nkey];
-			}
-		}
-	}
-	init();
-	
-	return { 
-		CSS_OPTIONS:css_options,
-		setElement:setElement
-	}
+//整个界面初始化
+(async function init(){
+	await NOTE_OPTION.init();//必须先初始化设置
+	await NoteManager.init();
 })();

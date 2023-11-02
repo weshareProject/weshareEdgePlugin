@@ -8,6 +8,46 @@ const CSS_BASESIZE=[14,16,18,20,24];
 //设置存储
 const OPTION_STORAGE=chrome.storage.sync;
 
+//页面笔记载入是否自动展开
+$('visibleshow').onclick=async ()=>{
+	$('visiblehid').style.borderColor="var(--unchecked)";
+	$('visiblehid').style.color="var(--unchecked)";
+	$('visibleshow').style.borderColor="var(--checked)";
+	$('visibleshow').style.color="var(--checked)";
+	
+	await OPTION_STORAGE.set({"visible_option":"show"});
+};
+$('visiblehid').onclick=async ()=>{
+	$('visiblehid').style.borderColor="var(--checked)";
+	$('visiblehid').style.color="var(--checked)";
+	$('visibleshow').style.borderColor="var(--unchecked)";
+	$('visibleshow').style.color="var(--unchecked)";
+	
+	await OPTION_STORAGE.set({"visible_option":"hid"});
+};
+(async ()=>{
+	let vsbop="hid";
+	let tp=await OPTION_STORAGE.get('visible_option');
+	if(tp['visible_option'])vsbop=tp['visible_option'];
+	
+	if(vsbop=="show"){
+		$("visibleshow").click();
+	}else{
+		$("visiblehid").click();
+	}
+})();
+
+
+
+
+
+
+
+
+
+
+
+
 //设置按钮生成
 //btnObj={attr:设置按钮对应的设置属性,value:设置的数值,showval:展示的数值}
 function BtnFactory(btnObj){
@@ -82,10 +122,8 @@ async function getNoteWebUrl(){
 	if(Object.keys(tp).length<=0){
 		noteweb.innerHTML="<div style='color:red;font-size:1.5rem;'>暂无笔记</div>";
 	}
-	console.log(tp);
 	for(let i in tp){
 		let it=tp[i];
-		console.log(it);
 		let url=it["url"];
 		let title=it['title'];
 		let num=it['num']
