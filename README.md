@@ -14,5 +14,7 @@
 
 优化了设计界面笔记记录网站读取
 
-background.js依然可能被浏览器kill掉，但刷新可以解决background数据未传回问题。
+*background.js依然可能被浏览器kill掉，但刷新可以解决background数据未传回问题
+
+回收站功能初步完成
 
