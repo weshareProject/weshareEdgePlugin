@@ -57,6 +57,7 @@ function NoteRecycleItemFactory(noteObj){
 	rebtn.innerHTML="[还原]";
 	//还原功能
 	rebtn.onclick=async()=>{
+		await chrome.runtime.sendMessage({op:"noaction"});
 		await chrome.runtime.sendMessage({op:"recycleNote",noteObj:noteObj});
 		await NoteRecycleBin.load();
 	};
@@ -67,6 +68,9 @@ function NoteRecycleItemFactory(noteObj){
 	let url=noteObj.url;
 	let webtitle=noteObj.webtitle;
 	dv.title=webtitle+":"+url;
+	let tp=document.createElement('div');
+	tp.innerHTML=content;
+	content=tp.innerText;
 	dv.appendChild(document.createTextNode(content));
 	
 	$('recycleBin').appendChild(dv);

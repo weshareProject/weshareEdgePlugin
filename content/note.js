@@ -245,7 +245,7 @@ function NoteFactory(noteObj){
 			noteObj['status']=sta;
 			noteObj["content"]=tg.innerHTML;
 			NoteManager.save();
-			NoteParentDiv.title=tg.innerHTML;
+			NoteParentDiv.title=tg.innerText;
 		}
 	}
 	//为元素添加编辑保存功能
@@ -333,7 +333,7 @@ function NoteFactory(noteObj){
 		addEditFunc(NoteBody);//添加编辑功能
 		HiddenDiv.push(NoteBody);
 		
-		NoteParentDiv.title=NoteBody.innerHTML;
+		NoteParentDiv.title=NoteBody.innerText;
 		
 		//隐藏/展开图标
 		let hidBtn=document.createElement('div');
