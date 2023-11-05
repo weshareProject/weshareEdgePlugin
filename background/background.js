@@ -23,6 +23,8 @@ chrome.contextMenus.onClicked.addListener((info,tab)=>{
 	}
 });
 
+
+
 //笔记管理员
 let AllNoteManager=(()=>{
 	//网站笔记表
@@ -37,12 +39,12 @@ let AllNoteManager=(()=>{
 	async function init(){
 		let tp=await Storage.get("weshareNoteWebUrl");
 		if(tp['weshareNoteWebUrl'])NoteWebUrl=JSON.parse(tp['weshareNoteWebUrl']);
-		console.log(NoteWebUrl);
+		//console.log(NoteWebUrl);
 	}
 	
 	//保存NoteWebUrl表
 	async function saveNoteWebUrl(){
-		console.log(NoteWebUrl);
+		//console.log(NoteWebUrl);
 		await Storage.set({"weshareNoteWebUrl":JSON.stringify(NoteWebUrl)});
 	}
 	
@@ -52,7 +54,6 @@ let AllNoteManager=(()=>{
 		if(NoteWebUrl[url]){
 			let ky='weshareNote-'+url;
 			let tp=await Storage.get(ky);
-			console.log(tp);
 			if(tp[ky])res=tp[ky];
 		}
 		//console.log(res);
@@ -61,7 +62,7 @@ let AllNoteManager=(()=>{
 	
 	//保存指定url的笔记
 	async function saveNote(urlObj,notes){
-		console.log(urlObj);
+		//console.log(urlObj);
 		let num=urlObj.num;
 		let url=urlObj.url;
 		let title=urlObj.title;
@@ -193,6 +194,7 @@ let AllNoteManager=(()=>{
 		newNote:newNote,
 		setNote:setNote,
 		removeNote:removeNote,
+		addNote:newNote,//等同new
 		getNoteWebUrl:getNoteWebUrl
 	}
 })();
@@ -259,9 +261,133 @@ let NoteRecycleBin=(()=>{
 NoteRecycleBin.init();
 
 
+//云服务管理
+let CloudServerManager=(()=>{
+	
+	//等待上传的笔记
+	let waitUploadNotes={};
+	
+	//用户信息
+	let user={userId:"000000",userName:"me",pass:"password"};
+	
+	//存储api
+	const Storage=chrome.storage.local;
+	
+	
+	//后端接口url
+	const BACKEND_INTERFACE={
+		LOGIN:"",
+		UPATE_NOTE:""
+	};
+	
+	
+	//登录
+	async function login(){
+		//TODO
+	}
+	
+	//获取用户信息
+	function getUserInfo(){
+		return user;
+	}
+	
+	
+	//上传笔记 
+	async function uploadNote(){
+		//TODO
+	}
+	
+	
+	//笔记状态
+	const NOTE_STATUS={
+		NEW:1,//新增
+		MOD:2,//修改 
+		DEL:3//删除
+	}
+	
+	//深拷贝object
+	function clone(obj){
+		return {...obj};
+	}
+	
+	
+	//增
+	function newNote(noteObj){
+		let uid=noteObj.uid;
+		let ntObj=clone(noteObj);
+		ntObj["status"]=NOTE_STATUS.NEW;
+		if(waitUploadNotes[uid] && waitUploadNotes[uid]["status"]==NOTE_STATUS.DEL){
+			if(waitUploadNotes[uid]["prestatus"]){
+				ntObj["status"]=waitUploadNotes[uid]["prestatus"];//还原的笔记,状态也还原 
+			}
+			//若没有记录前一个状态,代表前一个状态时笔记已经被upload过了,那么还原就是新增
+		}
+		waitUploadNotes[uid]=ntObj;
+		saveWaitUploadNotes();
+	}
+	
+	//改
+	function setNote(noteObj){
+		let uid=noteObj.uid;
+		let ntObj=clone(noteObj);
+		ntObj["status"]=NOTE_STATUS.MOD;
+		if(waitUploadNotes[uid] && waitUploadNotes[uid]["status"]==NOTE_STATUS.NEW){
+			ntObj["status"]=NOTE_STATUS.NEW;//新增的笔记,状态依然记录新增
+		}
+		waitUploadNotes[uid]=ntObj;
+		saveWaitUploadNotes();
+	}
+	
+	//删
+	function removeNote(noteObj){
+		let uid=noteObj.uid;
+		let ntObj=clone(noteObj);
+		if(waitUploadNotes[uid]){
+			ntObj["prestatus"]=waitUploadNotes[uid]["status"];//记录删除之前的状态,还原笔记时会使用
+		}
+		ntObj["status"]=NOTE_STATUS.DEL;
+		waitUploadNotes[uid]=ntObj;
+		saveWaitUploadNotes();
+	}
+	
+	//载入所有waitUploadNotes
+	async function loadWaitUploadNotes(){
+		let tp=Storage.get("waitUploadNotes");
+		if(tp["waitUploadNotes"])waitUploadNotes=JSON.parse(tp["waitUploadNotes"]);
+	}
+	
+	
+	//保存所有waitUploadNotes
+	async function saveWaitUploadNotes(){
+		console.log(waitUploadNotes);
+		await Storage.set({"waitUploadNotes":JSON.stringify(waitUploadNotes)});
+	}
+	
+	//初始化
+	async function init(){
+		loadWaitUploadNotes();
+	}
+	
+	
+	return {
+		init:init,
+		login:login,
+		newNote:newNote,
+		setNote:setNote,
+		removeNote:removeNote,
+		addNote:newNote,//等同new
+		uploadNote:uploadNote,
+		getUserInfo:getUserInfo
+	}
+	
+})();
+CloudServerManager.init();
+
+
 //与background交互的操作码
 const OPERATION_CODE={
 	//操作码固定3位
+	//100为无操作
 	NO_ACTION:100,
 	
 	//1xx为笔记相关
@@ -281,8 +407,6 @@ const OPERATION_CODE={
 };
 
 
-
-
 //操作消息接收
 chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
 	let tp="noaction";
@@ -297,12 +421,14 @@ chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
 		let noteObj=message.noteObj;
 		if(noteObj){
 			AllNoteManager.newNote(noteObj);
+			CloudServerManager.newNote(noteObj);
 		}
 	}else if(message.op==OPERATION_CODE.SET_NOTE){
 		//修改笔记
 		let noteObj=message.noteObj;
 		if(noteObj){
 			AllNoteManager.setNote(noteObj);
+			CloudServerManager.setNote(noteObj);
 		}
 	}else if(message.op==OPERATION_CODE.REMOVE_NOTE){
 		//移除笔记
@@ -310,6 +436,7 @@ chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
 		if(noteObj){
 			AllNoteManager.removeNote(noteObj);
 			NoteRecycleBin.addNote(noteObj);
+			CloudServerManager.removeNote(noteObj);
 		}
 	}else if(message.op==OPERATION_CODE.GET_NOTE_WEB_URL){
 		//获取所有网页的note信息
@@ -322,7 +449,8 @@ chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
 		let noteObj=message.noteObj;
 		if(noteObj){
 			NoteRecycleBin.removeNote(noteObj);
-			AllNoteManager.newNote(noteObj);
+			AllNoteManager.addNote(noteObj);
+			CloudServerManager.addNote(noteObj);
 		}
 	}else if(message.op==OPERATION_CODE.CLEAR_RECYCLE_NOTE){
 		//清空回收站
@@ -331,8 +459,9 @@ chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
 	
 	(async()=>{
 		let resp=await tp;
-		console.log(resp);
+		//console.log(resp);
 		sendResponse(resp);
 	})();
 	return true;
 });
+
