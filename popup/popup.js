@@ -17,6 +17,6 @@ $('addnote').addEventListener("click",()=>{
 });
 
 $('setting').addEventListener('click',()=>{
-	chrome.runtime.sendMessage({op:"noaction"});
+	chrome.runtime.sendMessage({op:100});
 	chrome.tabs.create({url:"/option/option.html"});
 });

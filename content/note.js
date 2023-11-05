@@ -41,29 +41,49 @@ const NOTE_OPTION=(()=>{
 })();
 
 
-//笔记状态常量
-const NOTE_STATUS={
-	SAVED:0,//存储完成无变化的笔记
-	NEW:1,//新建的笔记
-	CHANGED:2,//有修改的笔记
-	DELETE:3//删除的笔记
-}
+//与background交互的操作码
+const OPERATION_CODE_NOTE={
+	//操作码固定3位
+	NO_ACTION:100,
+	
+	//1xx为笔记相关
+	LOAD_NOTE:101,
+	NEW_NOTE:102,
+	SET_NOTE:103,
+	REMOVE_NOTE:104
+};
+
 
 
 //NoteManager负责所有Note的载入和管理
 let NoteManager=(()=>{
-	//记录所有note
+	//记录本页面所有note
 	let NoteList={};
 	/*
-	单个笔记基本格式:	uid:{"uid":uid,"content":内容,position位置:{top:top坐标,left:left坐标,type:类型},"permission":private/public,"ownerId":创建者，"ownerName":创建者昵称,status:状态,url:所在网页url,webtitle:所在网页title,createtime:创建时间};
+	笔记基本格式:	
+	{uid:{
+		"uid":uid,
+		"content":内容,
+		position位置:{
+			top:top坐标,
+			left:left坐标,
+			type:类型},
+		"permission":private/public,
+		"ownerId":创建者,
+		"ownerName":创建者昵称,
+		status:状态,
+		url:所在网页url,
+		webtitle:所在网页title,
+		createtime:创建时间
+	}...};
 	*/
 	
-	//存储设置常量
-	const STORAGE_OPTION={
-		LOCAL:0,
-		CLOUD:1,
-		AUTO:2
-	};
+	//发信息
+	async function SendMessage(messageObj){
+		await chrome.runtime.sendMessage({op:OPERATION_CODE_NOTE.NO_ACTION});
+		let res = await chrome.runtime.sendMessage(messageObj);
+		return res;
+	}
 	
 	//初始化
 	async function init(){
@@ -76,73 +96,35 @@ let NoteManager=(()=>{
 		return Date.now();
 	}
 	
-	//保存数据
-	async function saveNote(storageOption=STORAGE_OPTION.AUTO){
-		if(storageOption==STORAGE_OPTION.LOCAL){
-			console.log(NoteList);
-			let num=Object.keys(NoteList).length;
-			let urlObj={url:window.location.href,title:document.title,num:num};
-			//console.log(urlObj);
-			await chrome.runtime.sendMessage({op:"saveNote",urlObj:urlObj,notes:JSON.stringify(NoteList)});
-			
-		}else if(storageOption==STORAGE_OPTION.CLOUD){
-			//由于云存储转移到background,此处不进行操作了
-			saveNote(STORAGE_OPTION.LOCAL);
-		}else{
-			saveNote(STORAGE_OPTION.LOCAL);
-		}
+	//获取webURL
+	function getWebUrl(){
+		return window.location.href;
 	}
+	
 	
 	//载入数据
-	async function loadNote(storageOption=STORAGE_OPTION.AUTO){
-		if(storageOption==STORAGE_OPTION.LOCAL){
-			let nt=await chrome.runtime.sendMessage({op:"loadNote",url:window.location.href});
-			if(nt)NoteList=JSON.parse(nt);
+	async function loadNote(){
 		
-			console.log(NoteList);
-			for(let it in NoteList){
-				if(NoteList[it]['status']==NOTE_STATUS.DELETE){
-					continue;
-				}
-				let note=NoteFactory(NoteList[it])
-				note.createNoteDiv();//建立div块
+		let nt=await SendMessage({op:OPERATION_CODE_NOTE.LOAD_NOTE,url:getWebUrl()});
+		if(nt)NoteList=JSON.parse(nt);
+		
+		console.log(NoteList);
+		for(let it in NoteList){
+			let note=NoteFactory(NoteList[it])
+			note.createNoteDiv();//建立div块
 				
-				//console.log(NOTE_OPTION.VISIBLE_OPTIONS);
-				//是否展开
-				if(NOTE_OPTION.VISIBLE_OPTIONS[0]=="show"){
-					note.show();
-				}else{
-					note.hid();
-				}
+			//是否展开
+			if(NOTE_OPTION.VISIBLE_OPTIONS[0]=="show"){
+				note.show();
+			}else{
+				note.hid();
 			}
-		}else if(storageOption==STORAGE_OPTION.CLOUD){
-			//由于云存储转移到background,此处不进行操作了
-			loadNote(STORAGE_OPTION.LOCAL);
-		}else{
-			loadNote(STORAGE_OPTION.LOCAL);
 		}
 	}
 	
-	//设置note
-	function setNote(noteObj){
-		let uid=noteObj[uid];
-		if(uid)NoteList[uid]=noteObj;
-	}
-	
-	//删除note
-	async function deleteNote(noteObj){
-		let uid=noteObj["uid"];
-		if(NoteList[uid]){
-			await chrome.runtime.sendMessage({op:"deleteNote",noteObj:NoteList[uid]});//发送到background
-			delete NoteList[uid];
-		}
-	}
-	
-
 	//新建note
-	function newNote(po={x:100,y:100}){
+	async function newNote(po={x:100,y:100}){
 		let uid=createUID();
-		let sta=NOTE_STATUS.NEW;
 		const scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
 		const scrollLeft = document.documentElement.scrollLeft || document.body.scrollLeft;
 		
@@ -155,22 +137,40 @@ let NoteManager=(()=>{
 		let content="weshareNote";
 		let top_=Number(scrollTop)+Number(po.y)+"px";
 		let left=Number(scrollLeft)+Number(po.x)+"px";
-		let noteojb={"uid":uid,"content":content,"position":{"top":top_,"left":left},"permission":"private","ownerId":"000000000000","ownerName":"me","status":sta,"url":window.location.href,"webtitle":document.title,"createtime":Date.now()};
-		NoteList[uid]=noteojb;
-		NoteManager.save();
+		let noteob={"uid":uid,"content":content,"position":{"top":top_,"left":left},"permission":"private","ownerId":"000000000000","ownerName":"me","url":getWebUrl(),"webtitle":document.title,"createtime":Date.now()};
+		NoteList[uid]=noteob;
+		
+		await SendMessage({op:OPERATION_CODE_NOTE.NEW_NOTE,noteObj:NoteList[uid]});//发送到background
 		
 		NoteFactory(NoteList[uid]).createNoteDiv();
 		
 	}
 	
+	//修改note
+	async function setNote(noteObj){
+		let uid=noteObj["uid"];
+		if(uid){
+			NoteList[uid]=noteObj;
+			await SendMessage({op:OPERATION_CODE_NOTE.SET_NOTE,noteObj:NoteList[uid]});//发送到background
+		}
+	}
 	
+	//删除note
+	async function removeNote(noteObj){
+		let uid=noteObj["uid"];
+		if(NoteList[uid]){
+			await SendMessage({op:OPERATION_CODE_NOTE.REMOVE_NOTE,noteObj:NoteList[uid]});//发送到background
+			delete NoteList[uid];
+		}
+	}
+	
+
 	return {
 		init:init,
-		save:saveNote,
-		load:loadNote,
+		loadNote:loadNote,
+		newNote:newNote,
 		setNote:setNote,
-		deleteNote:deleteNote,
-		newNote:newNote
+		removeNote:removeNote
 	}
 	
 })();
@@ -206,13 +206,11 @@ function NoteFactory(noteObj){
 			
 			let top_=tg.style.top;
 			let left=tg.style.left;
-			let sta=NOTE_STATUS.CHANGED;
 		
 			noteObj['position']['top']=top_;
 			noteObj['position']['left']=left;
-			noteObj['status']=sta;
 		
-			NoteManager.save();
+			NoteManager.setNote(noteObj);
 		}
 	}
 	//增加拖拽功能
@@ -241,10 +239,8 @@ function NoteFactory(noteObj){
 		let newInner=tg.innerHTML;
 		if(newInner!=preInner){
 			//如果和之前的内容不一样则保存
-			let sta=NOTE_STATUS.CHANGED;
-			noteObj['status']=sta;
 			noteObj["content"]=tg.innerHTML;
-			NoteManager.save();
+			NoteManager.setNote(noteObj);
 			NoteParentDiv.title=tg.innerText;
 		}
 	}
@@ -260,18 +256,14 @@ function NoteFactory(noteObj){
 	
 	//----删除功能begin----
 	//删除笔记功能
-	async function deleteNote(event){
-		let sta=NOTE_STATUS.DELETE;
-		noteObj['status']=sta;
+	async function removeNote(event){
 		
-		await chrome.runtime.sendMessage({op:"noaction"});
-		await NoteManager.deleteNote(noteObj);
+		await NoteManager.removeNote(noteObj);
 		
-		NoteManager.save();
 		document.body.removeChild(NoteParentDiv);
 	}
 	function addDeleteFunc(ele){
-		ele.ondblclick=deleteNote;
+		ele.ondblclick=removeNote;
 	}
 	//----删除功能end----
 	
@@ -368,9 +360,11 @@ function NoteFactory(noteObj){
 	}
 }
 
+
+
 //整个界面初始化
 (async function init(){
-	await chrome.runtime.sendMessage({op:"noaction"});//唤醒一下background
+	await chrome.runtime.sendMessage({op:OPERATION_CODE_NOTE.NO_ACTION});//唤醒一下background
 	await NOTE_OPTION.init();//必须先初始化设置
 	await NoteManager.init();
 })();

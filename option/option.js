@@ -6,6 +6,16 @@ function $(id){
 //设置存储
 const OPTION_STORAGE=chrome.storage.sync;
 
+//与background交互的操作码
+const OPERATION_CODE_OPTION={
+	//操作码固定3位
+	NO_ACTION:100,
+	
+	//7xx为设置页面相关功能
+	GET_NOTE_WEB_URL:701,
+
+};
+
 //页面笔记载入是否自动展开
 $('visibleshow').onclick=async ()=>{
 	$('visiblehid').style.borderColor="var(--unchecked)";
@@ -158,7 +168,7 @@ function colorBtnFactory(cbtnObj){
 
 //获取有笔记的web的url
 async function getNoteWebUrl(){
-	let resp=await chrome.runtime.sendMessage({op:"getNoteWebUrl"});
+	let resp=await chrome.runtime.sendMessage({op:OPERATION_CODE_OPTION.GET_NOTE_WEB_URL});
 	return resp;
 }
 //展示记了笔记的网站
@@ -186,12 +196,12 @@ async function weburlInit(){
 	}
 }
 (async ()=>{
-	await chrome.runtime.sendMessage({op:"noaction"});//唤醒background
+	await chrome.runtime.sendMessage({op:OPERATION_CODE_OPTION.NO_ACTION});//唤醒background
 	await weburlInit();
 })();
 
 //打开回收站
 $('recycleBin').onclick=async ()=>{
-	await chrome.runtime.sendMessage({op:"noaction"});//唤醒background
+	await chrome.runtime.sendMessage({op:OPERATION_CODE_OPTION.NO_ACTION});//唤醒background
 	chrome.tabs.create({url:"/option/recycleBin.html"});
 };

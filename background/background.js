@@ -26,24 +26,9 @@ chrome.contextMenus.onClicked.addListener((info,tab)=>{
 //笔记管理员
 let AllNoteManager=(()=>{
 	//网站笔记表
-	//{网站url:{url:网页url,title:网页title,num:笔记条数,cloud:是否云同步}，...}
+	//{网站url:{url:网页url,title:网页title,num:笔记条数}，...}
 	let NoteWebUrl={};
 	
-	
-	
-	//笔记状态常量
-	const NOTE_STATUS={
-		SAVED:0,//存储完成无变化的笔记
-		NEW:1,//新建的笔记
-		CHANGED:2,//有修改的笔记
-		DELETE:3//删除的笔记
-	}
-	
-	//云同步常量
-	const CLOUD={
-		SAVED:0,//已经云同步保存
-		CHANGED:1//有变更尚未云同步
-	}
 	
 	//存储api
 	let Storage=chrome.storage.local;
@@ -61,29 +46,6 @@ let AllNoteManager=(()=>{
 		await Storage.set({"weshareNoteWebUrl":JSON.stringify(NoteWebUrl)});
 	}
 	
-	//保存指定url的笔记
-	async function saveNote(urlObj,notes){
-		console.log(urlObj);
-		let num=urlObj.num;
-		let url=urlObj.url;
-		let title=urlObj.title;
-		NoteWebUrl[url]={url:url,title:title,num:num,cloud:CLOUD.CHANGED};
-		if(num<=0){
-			delete NoteWebUrl[url];
-			//TODO 同步时需要标记移除,同步后再delete
-		}
-		saveNoteWebUrl();
-		
-		let saveObj={};
-		saveObj["weshareNote-"+url]=notes;
-		await Storage.set(saveObj);
-		if(num<=0){
-			let ky='weshareNote-'+url;
-			Storage.remove(ky);
-		}
-		//console.log(saveObj);
-	}
-	
 	//返回指定url的笔记
 	async function loadNote(url){
 		let res='{}';
@@ -97,47 +59,140 @@ let AllNoteManager=(()=>{
 		return res;
 	}
 	
-	//获取NoteWebUrl
-	function getNoteWebUrl(){
-		return JSON.stringify(NoteWebUrl);
+	//保存指定url的笔记
+	async function saveNote(urlObj,notes){
+		console.log(urlObj);
+		let num=urlObj.num;
+		let url=urlObj.url;
+		let title=urlObj.title;
+		NoteWebUrl[url]={url:url,title:title,num:num};
+		if(num<=0){
+			delete NoteWebUrl[url];
+		}
+		saveNoteWebUrl();
+		
+		let saveObj={};
+		saveObj["weshareNote-"+url]=notes;
+		await Storage.set(saveObj);
+		if(num<=0){
+			let ky='weshareNote-'+url;
+			Storage.remove(ky);
+		}
+		//console.log(saveObj);
 	}
 	
 	
 	//增加笔记
-	async function addNote(noteObj){
-		noteObj["status"]=NOTE_STATUS.CHANGED;
+	async function newNote(noteObj){
+		
 		let uid=noteObj.uid;
 		let url=noteObj.url;
 		let webtitle=noteObj.webtitle;
+		
+		if(!uid||!url)return;
+		
 		let urlObj=NoteWebUrl[url];
 		let notes="{}";
 		if(urlObj){
 			urlObj.num++;
-			let ky='weshareNote-'+url;
-			let tp=await Storage.get(ky);
-			if(tp[ky]){
-				tp=JSON.parse(tp[ky]);
-				tp[uid]=noteObj;
+			let tp=await loadNote(url);
+			if(tp){
+				tp=JSON.parse(tp);
 			}else{
 				tp={};
-				tp[uid]=noteObj;
 			}
+			tp[uid]=noteObj;
 			notes=JSON.stringify(tp);
 		}else{
 			let otp={};
 			otp[uid]=noteObj;
 			notes=JSON.stringify(otp);
-			urlObj={url:url,title:webtitle,num:1,cloud:CLOUD.CHANGED};
+			urlObj={url:url,title:webtitle,num:1};
 		}
 		await saveNote(urlObj,notes);
 		await saveNoteWebUrl();
 	}
 	
+	//修改笔记
+	async function setNote(noteObj){
+		let uid=noteObj.uid;
+		let url=noteObj.url;
+		let webtitle=noteObj.webtitle;
+		
+		if(!uid||!url)return;
+		let urlObj=NoteWebUrl[url];
+		let notes="{}";
+		if(urlObj){
+			//读取网页笔记存储
+			let tp=await loadNote(url);
+			if(tp){
+				tp=JSON.parse(tp);
+			}else{
+				tp={};
+			}
+			//如果有笔记记录则修改,没有则新增
+			if(tp[uid]){
+				tp[uid]=noteObj;
+			}else{
+				newNote(noteObj);
+				return;
+			}
+			notes=JSON.stringify(tp);
+		}else{
+			newNote(noteObj);
+			return;
+		}
+		
+		await saveNote(urlObj,notes);
+		await saveNoteWebUrl();
+	}
+	
+	//删除笔记
+	async function removeNote(noteObj){
+		let uid=noteObj.uid;
+		let url=noteObj.url;
+		let webtitle=noteObj.webtitle;
+		
+		if(!uid||!url)return;
+		let urlObj=NoteWebUrl[url];
+		let notes="{}";
+		if(urlObj){
+			//读取网页笔记存储
+			let tp=await loadNote(url);
+			if(tp){
+				tp=JSON.parse(tp);
+			}else{
+				tp={};
+			}
+			
+			if(tp[uid]){
+				urlObj.num--;
+				delete tp[uid];
+			}else{
+				//没记录,直接return
+				return;
+			}
+			notes=JSON.stringify(tp);
+		}else{
+			//没记录,直接return
+			return;
+		}
+		
+		await saveNote(urlObj,notes);
+		await saveNoteWebUrl();
+	}
+	
+	//获取NoteWebUrl
+	function getNoteWebUrl(){
+		return JSON.stringify(NoteWebUrl);
+	}
+	
 	return {
 		init:init,
-		saveNote:saveNote,
 		loadNote:loadNote,
-		addNote:addNote,
+		newNote:newNote,
+		setNote:setNote,
+		removeNote:removeNote,
 		getNoteWebUrl:getNoteWebUrl
 	}
 })();
@@ -204,36 +259,73 @@ let NoteRecycleBin=(()=>{
 NoteRecycleBin.init();
 
 
+//与background交互的操作码
+const OPERATION_CODE={
+	//操作码固定3位
+	NO_ACTION:100,
+	
+	//1xx为笔记相关
+	LOAD_NOTE:101,
+	NEW_NOTE:102,
+	SET_NOTE:103,
+	REMOVE_NOTE:104,
+	
+	//7xx为设置页面相关功能
+	GET_NOTE_WEB_URL:701,
+	
+	//8xx为回收站相关
+	GET_RECYCLE_BIN:801,
+	RECYCLE_NOTE:802,
+	CLEAR_RECYCLE_NOTE:803
+	
+};
+
+
+
 
 //操作消息接收
 chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
-	let tp="no action";
-	if(message.op=="loadNote"){
+	let tp="noaction";
+	if(message.op==OPERATION_CODE.LOAD_NOTE){
+		//载入指定url笔记
 		let url=message.url;
 		if(url){
 			tp=AllNoteManager.loadNote(url);
 		}
-	}else if(message.op=="saveNote"){
-		let urlObj=message.urlObj;
-		let notes=message.notes;
-		if(urlObj && notes){
-			AllNoteManager.saveNote(urlObj,notes);
-			tp="save finish";
-		}
-	}else if(message.op=="getNoteWebUrl"){
-		tp=AllNoteManager.getNoteWebUrl();
-	}else if(message.op=="deleteNote"){
+	}else if(message.op==OPERATION_CODE.NEW_NOTE){
+		//新建笔记
 		let noteObj=message.noteObj;
-		if(noteObj)NoteRecycleBin.addNote(noteObj);
-	}else if(message.op=="getRecycleBin"){
+		if(noteObj){
+			AllNoteManager.newNote(noteObj);
+		}
+	}else if(message.op==OPERATION_CODE.SET_NOTE){
+		//修改笔记
+		let noteObj=message.noteObj;
+		if(noteObj){
+			AllNoteManager.setNote(noteObj);
+		}
+	}else if(message.op==OPERATION_CODE.REMOVE_NOTE){
+		//移除笔记
+		let noteObj=message.noteObj;
+		if(noteObj){
+			AllNoteManager.removeNote(noteObj);
+			NoteRecycleBin.addNote(noteObj);
+		}
+	}else if(message.op==OPERATION_CODE.GET_NOTE_WEB_URL){
+		//获取所有网页的note信息
+		tp=AllNoteManager.getNoteWebUrl();
+	}else if(message.op==OPERATION_CODE.GET_RECYCLE_BIN){
+		//获取回收站内note
 		tp=NoteRecycleBin.getRecycleBin();
-	}else if(message.op=="recycleNote"){
+	}else if(message.op==OPERATION_CODE.RECYCLE_NOTE){
+		//还原note
 		let noteObj=message.noteObj;
 		if(noteObj){
 			NoteRecycleBin.removeNote(noteObj);
-			AllNoteManager.addNote(noteObj);
+			AllNoteManager.newNote(noteObj);
 		}
-	}else if(message.op=="clearRecycleBin"){
+	}else if(message.op==OPERATION_CODE.CLEAR_RECYCLE_NOTE){
+		//清空回收站
 		let tp=NoteRecycleBin.clearRecycleBin();
 	}
 	
