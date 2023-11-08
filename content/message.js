@@ -7,13 +7,15 @@ document.body.addEventListener("contextmenu",(event)=>{
 	//console.log(clickpoint);
 });
 
-//右键菜单接收处理
+//接收处理
 chrome.runtime.onMessage.addListener((request,sender,response)=>{
-		if(request.op=="addNote"){
+		if(request.op)if(request.op=="addNote"){
 			if(request.position=='clickpoint')NoteManager.newNote(clickpoint);
 			else NoteManager.newNote();
 		}else if(request.op=="highlight"){
 			Highlight.highlight();
+		}else if(request.op=="publicNoteSwitch"){
+			PublicNoteManager.changeParentDivVisible();
 		}
 });
 

@@ -12,6 +12,7 @@ chrome.runtime.onInstalled.addListener(()=>{
 		contexts:["selection"],
 		id:"weshareHighlight"
 	});
+	
 });
 
 //右键菜单监听添加
@@ -21,9 +22,8 @@ chrome.contextMenus.onClicked.addListener((info,tab)=>{
 	}else if(info.menuItemId=='weshareHighlight'){
 		chrome.tabs.sendMessage(tab.id,{op:"highlight"});
 	}
+	
 });
-
-
 
 //笔记管理员
 let AllNoteManager=(()=>{
@@ -363,6 +363,21 @@ let CloudServerManager=(()=>{
 		await Storage.set({"waitUploadNotes":JSON.stringify(waitUploadNotes)});
 	}
 	
+	//获取指定url界面所有public笔记
+	async function getPublicNote(url){
+		//TODO
+		console.log('getPublicNote');
+		let tp=await AllNoteManager.loadNote(url);
+		if(tp)tp=JSON.parse(tp);
+		else tp={};
+		let res=[];
+		for(let i in tp){
+			res.push(tp[i]);
+		}
+		res=JSON.stringify(res);
+		return res;
+	}
+	
 	//初始化
 	async function init(){
 		loadWaitUploadNotes();
@@ -377,7 +392,8 @@ let CloudServerManager=(()=>{
 		removeNote:removeNote,
 		addNote:newNote,//等同new
 		uploadNote:uploadNote,
-		getUserInfo:getUserInfo
+		getUserInfo:getUserInfo,
+		getPublicNote:getPublicNote
 	}
 	
 })();
@@ -402,7 +418,14 @@ const OPERATION_CODE={
 	//8xx为回收站相关
 	GET_RECYCLE_BIN:801,
 	RECYCLE_NOTE:802,
-	CLEAR_RECYCLE_NOTE:803
+	CLEAR_RECYCLE_NOTE:803,
+	
+	//9xx为云服务相关
+	LOGIN:901,
+	CLOUD_UPLOAD:902,
+	CLOUD_DOWNLOAD:903,
+	
+	GET_PUBLIC_NOTE:908
 	
 };
 
@@ -410,7 +433,7 @@ const OPERATION_CODE={
 //操作消息接收
 chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
 	let tp="noaction";
-	if(message.op==OPERATION_CODE.LOAD_NOTE){
+	if(message.op)if(message.op==OPERATION_CODE.LOAD_NOTE){
 		//载入指定url笔记
 		let url=message.url;
 		if(url){
@@ -454,14 +477,28 @@ chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
 		}
 	}else if(message.op==OPERATION_CODE.CLEAR_RECYCLE_NOTE){
 		//清空回收站
-		let tp=NoteRecycleBin.clearRecycleBin();
+		tp=NoteRecycleBin.clearRecycleBin();
+	}else if(message.op==OPERATION_CODE.LOGIN){
+		//TODO
+		
+	}else if(message.op==OPERATION_CODE.CLOUD_UPLOAD){
+		//TODO
+	}else if(message.op==OPERATION_CODE.CLOUD_DOWNLOAD){
+		//TODO
+		
+	}else if(message.op==OPERATION_CODE.GET_PUBLIC_NOTE){
+		//TODO
+		let url=message.url;
+		tp=CloudServerManager.getPublicNote(url);
 	}
 	
 	(async()=>{
 		let resp=await tp;
-		//console.log(resp);
+		console.log(resp);
 		sendResponse(resp);
 	})();
 	return true;
 });
+
+
 

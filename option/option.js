@@ -54,7 +54,7 @@ const CSS_BASESIZE=[14,16,18,20,24];
 function sizeBtnFactory(btnObj){
 	let attr=btnObj.attr;
 	let value=btnObj.value;
-	let showval=btnObj.showval
+	let showval=btnObj.showval;
 	let btn=document.createElement('div');
 	btn.classList.add('setBtn');
 	btn.innerHTML=showval;
@@ -183,7 +183,8 @@ async function weburlInit(){
 			let it=tp[i];
 			let url=it["url"];
 			let title=it['title'];
-			let num=it['num']
+			if(!title)title=url;
+			let num=it['num'];
 			let dv=document.createElement('div');
 			dv.innerHTML="<span style='color:blue'>["+num+"笔记]</span>"+title;
 			dv.title=url;
