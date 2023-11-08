@@ -407,9 +407,10 @@ let PublicNoteManager=(()=>{
 	let bodyDiv;//主体div
 	//该页面公开笔记
 	let publicNotes=[];
-	let notesIndex;//当前笔记index
+	let notesIndex=0;//当前笔记index
 	let indexDiv;//显示index的div框
 	let infDiv;//信息框
+	let likeBtn;//like按钮
 	
 	//下一个index
 	function nextIndex(){
@@ -431,7 +432,7 @@ let PublicNoteManager=(()=>{
 	function updateDiv(){
 		if(publicNotes.length<=0){
 			bodyDiv.innerHTML="此页面暂无公开笔记";
-			notesIndex.innerHTML="0/0";
+			indexDiv.innerHTML="0/0";
 			infDiv.title="暂无信息";
 			const scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
 			const scrollLeft = document.documentElement.scrollLeft || document.body.scrollLeft;
@@ -441,10 +442,12 @@ let PublicNoteManager=(()=>{
 			
 			return;
 		}
-			
+				
 		let noteObj=publicNotes[notesIndex];
-		bodyDiv.innerHTML=noteObj.content;
-		indexDiv.innerHTML=(notesIndex+1)+"/"+publicNotes.length;
+		bodyDiv.innerHTML=noteObj.content;//笔记body更新
+		indexDiv.innerHTML=(notesIndex+1)+"/"+publicNotes.length;//index更新 
+		
+		//信息更新
 		let infs="";
 		if(noteObj.ownerName){
 			infs+="创建者:"+noteObj.ownerName+"\n";
@@ -455,13 +458,28 @@ let PublicNoteManager=(()=>{
 		}
 		infDiv.title=infs;
 		
+		//like更新
+		if(noteObj.like && noteObj.like=='like'){
+			likeBtn.innerHTML="❤️";
+		}else{
+			likeBtn.innerHTML="🤍";
+		}
+		//likenum更新
+		if(noteObj.likenum){
+			likeBtn.title=noteObj.likenum+" likes";
+		}else{
+			likeBtn.title="0 likes";
+		}
+		
+		
 		let pos=noteObj.position;
 		if(pos){
 			let top_=pos.top;
 			let left=pos.left;
 			parentDiv.style.top=top_;
 			parentDiv.style.left=left;
-			window.scrollTo({left:parentDiv.offsetLeft,top:parentDiv.offsetTop,behavior:'smooth'});
+			let ht=document.documentElement.clientHeight || document.body.clientHeight;
+			window.scrollTo({left:parentDiv.offsetLeft,top:parentDiv.offsetTop-ht/4,behavior:'smooth'});
 		}
 	}
 	
@@ -568,8 +586,39 @@ let PublicNoteManager=(()=>{
 		ele.addEventListener("dragend",dragNoteEnd);
 	}
 	//----拖拽功能end----
-
-
+	
+	//like按钮点击
+	async function likeBtnClick(){
+		if(!publicNotes[notesIndex]){
+				return;
+		}
+		
+		let tg=publicNotes[notesIndex];
+		
+		if(tg.like && tg.like=='like' ){
+			delete tg.like;
+			likeBtn.innerHTML="🤍";
+			if(tg.likenum){
+				tg.likenum--;
+				likeBtn.title=tg.likenum+" likes";
+				if(tg.likenum<=0){
+					likeBtn.title="0 likes";
+					delete tg.likenum;
+				}
+			}
+			//TODO			
+		}else{
+			publicNotes[notesIndex].like='like';
+			likeBtn.innerHTML="❤️";
+			if(tg.likenum){
+				tg.likenum++;
+			}else{
+				tg.likenum=1;
+			}
+			likeBtn.title=tg.likenum+" likes";
+			//TODO
+		}
+	}
 
 	//初始化
 	function init(){
@@ -585,6 +634,15 @@ let PublicNoteManager=(()=>{
 		hidBtn.innerHTML="💬";
 		addChangeVisibleFunc(hidBtn);
 		parentDiv.appendChild(hidBtn);
+		
+		//like栏
+		likeBtn=document.createElement('div');
+		likeBtn.classList.add('weshareNoteIcon');
+		likeBtn.classList.add('weshareDashedBorder');
+		likeBtn.innerHTML="🤍";
+		likeBtn.onclick=likeBtnClick;
+		HiddenDiv.push(likeBtn);
+		parentDiv.appendChild(likeBtn);
 		
 		//信息图标
 		infDiv=document.createElement('div');
