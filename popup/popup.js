@@ -29,3 +29,4 @@ $('publicNote').addEventListener('click',()=>{
 	})();
 });
 
+$('account').innerHTML="当前账户:"+"<span style='color:red'>未登录</span>"

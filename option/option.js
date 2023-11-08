@@ -46,6 +46,52 @@ $('visiblehid').onclick=async ()=>{
 })();
 
 
+//----图标设置begin----
+const ICON_BASE=["📌","📝","✒️","💬","📃"];
+function iconBtnFactory(icon){
+	let btn=document.createElement('div');
+	btn.classList.add('setBtn');
+	btn.innerHTML=icon;
+	async function checked(){
+		let btns=$('iconset').querySelectorAll('.setBtn');
+		
+		for(let i=0;i<btns.length;i++){
+			btns[i].style.borderColor="var(--unchecked)";
+			btns[i].style.color="var(--unchecked)";
+		}
+		btn.style.borderColor="var(--checked)";
+		btn.style.color="var(--checked)";
+		let sav={};
+		sav['icon']=icon;
+		await OPTION_STORAGE.set(sav);
+		
+		$('mainicon').innerHTML=icon;
+	}
+	
+	btn.onclick=checked;
+	
+	$('iconset').appendChild(btn);
+	
+	return btn;
+}
+//生成图标大小设定
+(async function iconSizeSetting(){
+	$('iconset').innerHTML="";
+	let icon="📌";
+	let tp=await OPTION_STORAGE.get("icon");
+	if(tp["icon"])icon=tp["icon"];
+	for(let i in ICON_BASE){
+		let btn=iconBtnFactory(ICON_BASE[i]);
+		if(ICON_BASE[i]==icon)btn.click();
+	}
+})();
+//----图标设置end----
+
+
+
+
+
+
 //----尺寸设置begin----
 //css样式基础尺寸
 const CSS_BASESIZE=[14,16,18,20,24];

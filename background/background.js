@@ -494,7 +494,7 @@ chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
 	
 	(async()=>{
 		let resp=await tp;
-		console.log(resp);
+		if(resp!="noaction")console.log(resp);
 		sendResponse(resp);
 	})();
 	return true;

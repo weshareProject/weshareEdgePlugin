@@ -16,6 +16,11 @@ const NOTE_OPTION=(()=>{
 	}
 	//页面载入时是否展开笔记设置
 	let visible_option=["hid"];
+	
+	//笔记图标
+	let icon=["📌"];
+	
+	
 	//初始化
 	async function init(){
 		//读取css设置
@@ -30,13 +35,17 @@ const NOTE_OPTION=(()=>{
 		let tp=await OPTION_STORAGE.get("visible_option");
 		if(tp['visible_option'])visible_option[0]=tp['visible_option'];
 		
+		let ic=await OPTION_STORAGE.get("icon");
+		if(ic['icon'])icon[0]=ic['icon'];
 	}
+	
 	
 	return {
 		init:init,
 		CSS_OPTIONS:css_options,
 		setElement:setElement,
-		VISIBLE_OPTIONS:visible_option
+		VISIBLE_OPTIONS:visible_option,
+		ICON:icon
 	}
 })();
 
@@ -329,9 +338,6 @@ function NoteFactory(noteObj){
 		NOTE_OPTION.setElement(NoteParentDiv);
 		NoteParentDiv.style.top=noteObj["position"]["top"];
 		NoteParentDiv.style.left=noteObj["position"]["left"];
-		NoteParentDiv.dataset.permission=noteObj["permission"];
-		NoteParentDiv.dataset.ownerId=noteObj["ownerId"];
-		NoteParentDiv.dataset.ownerName=noteObj["ownerName"];
 		addDragFunc(NoteParentDiv);//添加拖拽功能
 		
 		
@@ -347,7 +353,7 @@ function NoteFactory(noteObj){
 		//隐藏/展开图标
 		let hidBtn=document.createElement('div');
 		hidBtn.classList.add('weshareNoteIcon');
-		hidBtn.innerHTML="💬";
+		hidBtn.innerHTML=NOTE_OPTION.ICON[0];
 		addChangeVisibleFunc(hidBtn);
 		
 		
@@ -359,9 +365,25 @@ function NoteFactory(noteObj){
 		delBtn.title="双击删除笔记";
 		HiddenDiv.push(delBtn);
 		
+		//信息图标
+		let infBtn=document.createElement('div');
+		infBtn.classList.add('weshareNoteIcon');
+		infBtn.innerHTML="📅";
+		let infs="";
+		if(noteObj.ownerName){
+			infs+="创建者:"+noteObj.ownerName+"\n";
+		}
+		if(noteObj.createtime){
+			let tm=new Date(noteObj.createtime);
+			infs+="创建时间:"+tm.toLocaleString();
+		}
+		infBtn.title=infs;
+		HiddenDiv.push(infBtn);
+		
 		//放入父div中
 		NoteParentDiv.appendChild(hidBtn);
 		NoteParentDiv.appendChild(delBtn);
+		NoteParentDiv.appendChild(infBtn);
 		NoteParentDiv.appendChild(NoteBody);
 		
 		//父div放入body中
@@ -387,6 +409,7 @@ let PublicNoteManager=(()=>{
 	let publicNotes=[];
 	let notesIndex;//当前笔记index
 	let indexDiv;//显示index的div框
+	let infDiv;//信息框
 	
 	//下一个index
 	function nextIndex(){
@@ -409,7 +432,7 @@ let PublicNoteManager=(()=>{
 		if(publicNotes.length<=0){
 			bodyDiv.innerHTML="此页面暂无公开笔记";
 			notesIndex.innerHTML="0/0";
-			
+			infDiv.title="暂无信息";
 			const scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
 			const scrollLeft = document.documentElement.scrollLeft || document.body.scrollLeft;
 			
@@ -422,6 +445,15 @@ let PublicNoteManager=(()=>{
 		let noteObj=publicNotes[notesIndex];
 		bodyDiv.innerHTML=noteObj.content;
 		indexDiv.innerHTML=(notesIndex+1)+"/"+publicNotes.length;
+		let infs="";
+		if(noteObj.ownerName){
+			infs+="创建者:"+noteObj.ownerName+"\n";
+		}
+		if(noteObj.createtime){
+			let tm=new Date(noteObj.createtime);
+			infs+="创建时间:"+tm.toLocaleString();
+		}
+		infDiv.title=infs;
 		
 		let pos=noteObj.position;
 		if(pos){
@@ -493,9 +525,13 @@ let PublicNoteManager=(()=>{
 	//----隐藏/显示功能end----
 	
 	//改变父元素显示状态
+	let hasLoad=false;
 	async function changeParentDivVisible(){
 		if(parentDiv.style.display=="none"){
-			await load();
+			if(!hasLoad){
+				await load();
+				hasLoad=true;
+			}
 			parentDiv.style.display="block";
 		}else{
 			parentDiv.style.display="none";
@@ -549,6 +585,14 @@ let PublicNoteManager=(()=>{
 		hidBtn.innerHTML="💬";
 		addChangeVisibleFunc(hidBtn);
 		parentDiv.appendChild(hidBtn);
+		
+		//信息图标
+		infDiv=document.createElement('div');
+		infDiv.classList.add('weshareNoteIcon');
+		infDiv.classList.add('weshareDashedBorder');
+		infDiv.innerHTML="📅";
+		parentDiv.appendChild(infDiv);
+		HiddenDiv.push(infDiv);
 		
 		//翻页栏
 		let pageline=document.createElement('div');
