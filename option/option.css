@@ -29,7 +29,7 @@ body{
 /*设置块*/
 .content{
 	display:block;
-	padding-top:2rem;
+	padding-bottom:2rem;
 }
 
 /*设置按钮*/

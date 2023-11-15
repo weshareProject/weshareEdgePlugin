@@ -257,15 +257,15 @@ function NoteFactory(noteObj){
 	//获取原本存储的内容
 	function getPreInner(event){
 		let tg=event.target;
-		preInner=tg.innerHTML;
+		preInner=tg.innerText;
 	}
 	//内容改变自动保存功能
 	function changeNote(event){
 		let tg=event.target;
-		let newInner=tg.innerHTML;
+		let newInner=tg.innerText;
 		if(newInner!=preInner){
 			//如果和之前的内容不一样则保存
-			noteObj["content"]=tg.innerHTML;
+			noteObj["content"]=tg.innerText;
 			NoteManager.setNote(noteObj);
 			NoteParentDiv.title=tg.innerText;
 		}
@@ -275,6 +275,28 @@ function NoteFactory(noteObj){
 		ele.setAttribute("contenteditable","true");
 		ele.onblur=changeNote;
 		ele.onfocus=getPreInner;
+	}
+	//添加字数监测
+	function addWnumMonitor(ele){
+		//字数监测
+		const maxwnum=800;//最大字数上限
+		ele.addEventListener('keydown',(event)=>{
+			let tg=event.target;
+			tg.dataset.wnum=tg.innerText.length;
+			if(tg.innerText.length > maxwnum+10){
+				event.preventDefault();
+			}
+		});
+		ele.addEventListener('keyup',(event)=>{
+			let tg=event.target;
+			tg.dataset.wnum=tg.innerText.length;
+			if(tg.innerText.length > maxwnum+10){
+				tg.innerText=tg.innerText.substr(0,maxwnum);
+				tg.dataset.wnum=tg.innerText.length;
+				tg.blur();
+				event.preventDefault();
+			}
+		});
 	}
 	//----编辑保存功能end----
 	
@@ -344,9 +366,11 @@ function NoteFactory(noteObj){
 		//内部主题创建
 		let NoteBody=document.createElement("div");
 		NoteBody.classList.add('weshareNoteBody');
-		NoteBody.innerHTML=noteObj["content"];
+		NoteBody.innerText=noteObj["content"];
 		addEditFunc(NoteBody);//添加编辑功能
+		addWnumMonitor(NoteBody);//添加字数监测
 		HiddenDiv.push(NoteBody);
+		NoteBody.dataset.wnum=NoteBody.innerText.length;
 		
 		NoteParentDiv.title=NoteBody.innerText;
 		
@@ -399,7 +423,7 @@ function NoteFactory(noteObj){
 	}
 }
 
-
+//PublicNoteManager管理当前页面的公开笔记
 let PublicNoteManager=(()=>{
 	
 	let parentDiv;//父div
@@ -432,6 +456,7 @@ let PublicNoteManager=(()=>{
 	function updateDiv(){
 		if(publicNotes.length<=0){
 			bodyDiv.innerHTML="此页面暂无公开笔记";
+			bodyDiv.dataset.wnum=0;
 			indexDiv.innerHTML="0/0";
 			infDiv.title="暂无信息";
 			const scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
@@ -444,7 +469,8 @@ let PublicNoteManager=(()=>{
 		}
 				
 		let noteObj=publicNotes[notesIndex];
-		bodyDiv.innerHTML=noteObj.content;//笔记body更新
+		bodyDiv.innerText=noteObj.content;//笔记body更新
+		bodyDiv.dataset.wnum=bodyDiv.innerText.length;
 		indexDiv.innerHTML=(notesIndex+1)+"/"+publicNotes.length;//index更新 
 		
 		//信息更新
