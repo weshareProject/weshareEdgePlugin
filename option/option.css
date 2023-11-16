@@ -105,10 +105,29 @@ body{
 }
 
 
-
+/*超链接样式*/
 a{
 	color:blue;
 }
 a:hover{
 	color:purple;
+}
+
+/*提示*/
+#tips{
+	display:block;
+	position:fixed;
+	top:2vh;
+	left:2vw;
+}
+
+/*输入框*/
+input{
+	display:inline-block;
+	font-size:1.2rem;
+	width:18rem;
+	padding:0.1rem 0.7rem;
+	border:none;
+	outline:none;
+	text-decoration: underline;
 }

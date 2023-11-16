@@ -13,8 +13,22 @@ const OPERATION_CODE_OPTION={
 	
 	//7xx为设置页面相关功能
 	GET_NOTE_WEB_URL:701,
+	
+	//9xx为云服务相关
+	LOGIN:901,
+	LOGOUT:902,
+	CLOUD_UPLOAD:903,
+	CLOUD_DOWNLOAD:904,
+	GET_USER_INFO:905
 
 };
+
+//发送信息
+async function SendMessage(message){
+	await chrome.runtime.sendMessage({op:OPERATION_CODE_OPTION.NO_ACTION});//唤醒background
+	let tp=await chrome.runtime.sendMessage(message);
+	return tp;
+}
 
 //页面笔记载入是否自动展开
 $('visibleshow').onclick=async ()=>{
@@ -210,16 +224,9 @@ function colorBtnFactory(cbtnObj){
 
 
 
-
-
-//获取有笔记的web的url
-async function getNoteWebUrl(){
-	let resp=await chrome.runtime.sendMessage({op:OPERATION_CODE_OPTION.GET_NOTE_WEB_URL});
-	return resp;
-}
 //展示记了笔记的网站
 async function weburlInit(){
-	let tp=await getNoteWebUrl();
+	let tp=await SendMessage({op:OPERATION_CODE_OPTION.GET_NOTE_WEB_URL});
 	let noteweb=$('noteweb');
 	if(tp=="{}"){
 		noteweb.innerHTML="<div style='color:red;font-size:1.5rem;'>暂无笔记</div>";
@@ -242,13 +249,65 @@ async function weburlInit(){
 		}
 	}
 }
-(async ()=>{
-	await chrome.runtime.sendMessage({op:OPERATION_CODE_OPTION.NO_ACTION});//唤醒background
-	await weburlInit();
-})();
+weburlInit();
 
 //打开回收站
 $('recycleBin').onclick=async ()=>{
-	await chrome.runtime.sendMessage({op:OPERATION_CODE_OPTION.NO_ACTION});//唤醒background
+	await SendMessage({op:OPERATION_CODE_OPTION.NO_ACTION});
 	chrome.tabs.create({url:"/option/recycleBin.html"});
 };
+
+
+
+//----账户相关设置begin----
+//更新tips
+let tipsTimer=null;
+function makeTips(str,color="black"){
+	$('tips').innerHTML=str;
+	$('tips').style.color=color;
+	if(tipsTimer){
+		clearTimeout(tipsTimer);
+	}
+	tipsTimer=setTimeout(()=>{
+		$('tips').innerHTML="";
+	},3000);
+}
+
+//切换显示面板
+async function checkAccountContent(){
+	let tp=await SendMessage({op:OPERATION_CODE_OPTION.GET_USER_INFO});
+	if(tp.login && tp.userName){
+		$('logincontent').style.display="none";
+		$('accountcontent').style.display="block";
+		$('nowaccount').innerHTML="当前账户:<span style='color:green'>"+tp.userName+"</span>";
+		if(!tipsTimer)makeTips("账户已登录","green");
+	}else{
+		$('logincontent').style.display="block";
+		$('accountcontent').style.display="none";
+		if(!tipsTimer)makeTips("账户未登录","red");
+	}
+};
+checkAccountContent();
+
+//登录
+$('loginBtn').onclick=async ()=>{
+	let userName=$('username').value;
+	let pass=$('pass').value;
+	let usr={userName:userName,pass:pass};
+	let rsp=await SendMessage({op:OPERATION_CODE_OPTION.LOGIN,user:usr});
+	makeTips(rsp);
+	await checkAccountContent();
+};
+
+//注销
+$('logoutBtn').onclick=async ()=>{
+	//TODO:获取userName和password
+	let rsp=await SendMessage({op:OPERATION_CODE_OPTION.LOGOUT});
+	makeTips(rsp);
+	await checkAccountContent();
+};
+
+//----账户相关设置end----
+
+
+

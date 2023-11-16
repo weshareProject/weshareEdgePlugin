@@ -268,7 +268,8 @@ let CloudServerManager=(()=>{
 	let waitUploadNotes={};
 	
 	//用户信息
-	let user={userId:"000000",userName:"me",pass:"password"};
+	//{userId:用户id,userName:用户名,pass:密码,login:是否处于登录状态}
+	let user={userId:"000000",userName:"me",pass:"password",login:false};
 	
 	//存储api
 	const Storage=chrome.storage.local;
@@ -282,12 +283,31 @@ let CloudServerManager=(()=>{
 	
 	
 	//登录
-	async function login(){
+	async function login(usr=user){
 		//TODO
+		if(!usr || !usr.pass || !usr.userName){
+			return "<span style='color:red'>请输入用户名或密码</span>";
+		}
+		
+		user.pass=usr.pass;
+		user.userName=usr.userName;
+		user.login=true;
+		
+		console.log(user);
+		
+		return "login";
+	}
+	
+	//注销
+	async function logout(){
+		//TODO
+		user.login=false;
+		return "logout";
 	}
 	
 	//获取用户信息
 	function getUserInfo(){
+		//TODO
 		return user;
 	}
 	
@@ -295,8 +315,14 @@ let CloudServerManager=(()=>{
 	//上传笔记 
 	async function uploadNote(){
 		//TODO
+		return "uploadNote";
 	}
 	
+	//下载笔记 
+	async function downloadNote(){
+		//TODO
+		return "downloadNote";
+	}
 	
 	//笔记状态
 	const NOTE_STATUS={
@@ -387,11 +413,13 @@ let CloudServerManager=(()=>{
 	return {
 		init:init,
 		login:login,
+		logout:logout,
 		newNote:newNote,
 		setNote:setNote,
 		removeNote:removeNote,
 		addNote:newNote,//等同new
 		uploadNote:uploadNote,
+		downloadNote:downloadNote,
 		getUserInfo:getUserInfo,
 		getPublicNote:getPublicNote
 	}
@@ -422,8 +450,10 @@ const OPERATION_CODE={
 	
 	//9xx为云服务相关
 	LOGIN:901,
-	CLOUD_UPLOAD:902,
-	CLOUD_DOWNLOAD:903,
+	LOGOUT:902,
+	CLOUD_UPLOAD:903,
+	CLOUD_DOWNLOAD:904,
+	GET_USER_INFO:905,
 	
 	GET_PUBLIC_NOTE:908
 	
@@ -479,15 +509,22 @@ chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
 		//清空回收站
 		tp=NoteRecycleBin.clearRecycleBin();
 	}else if(message.op==OPERATION_CODE.LOGIN){
-		//TODO
-		
+		//账户登录
+		tp=CloudServerManager.login(message.user);
+	}else if(message.op==OPERATION_CODE.LOGOUT){
+		//账户注销
+		tp=CloudServerManager.logout();
 	}else if(message.op==OPERATION_CODE.CLOUD_UPLOAD){
-		//TODO
+		//上传笔记
+		tp=CloudServerManager.uploadNote();
 	}else if(message.op==OPERATION_CODE.CLOUD_DOWNLOAD){
-		//TODO
-		
+		//下载笔记
+		tp=CloudServerManager.downloadNote();
+	}else if(message.op==OPERATION_CODE.GET_USER_INFO){
+		//获取用户信息
+		tp=CloudServerManager.getUserInfo();
 	}else if(message.op==OPERATION_CODE.GET_PUBLIC_NOTE){
-		//TODO
+		//获取当前页面公开笔记
 		let url=message.url;
 		tp=CloudServerManager.getPublicNote(url);
 	}

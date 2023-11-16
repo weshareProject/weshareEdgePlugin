@@ -293,7 +293,6 @@ function NoteFactory(noteObj){
 			if(tg.innerText.length > maxwnum+10){
 				tg.innerText=tg.innerText.substr(0,maxwnum);
 				tg.dataset.wnum=tg.innerText.length;
-				tg.blur();
 				event.preventDefault();
 			}
 		});
@@ -366,7 +365,7 @@ function NoteFactory(noteObj){
 		//内部主题创建
 		let NoteBody=document.createElement("div");
 		NoteBody.classList.add('weshareNoteBody');
-		NoteBody.innerText=noteObj["content"];
+		NoteBody.innerHTML=noteObj["content"];
 		addEditFunc(NoteBody);//添加编辑功能
 		addWnumMonitor(NoteBody);//添加字数监测
 		HiddenDiv.push(NoteBody);

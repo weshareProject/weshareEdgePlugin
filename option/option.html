@@ -14,34 +14,33 @@
 		<p>*注意:更改设置前已经打开的页面需要刷新才能应用设置</p>
 	</div>
 	<h2>账号设置</h2>
-	<div class="content">
-		<div class="setname">当前账户</div>
-		
-		<div id="login">
-			<div class="setBtn">登录</div>
-		</div>
-		
-		<div id="hasLogin">
-			<div class="setBtn">手动同步</div>
-			<div class="setBtn" style="color:red;" >注销</div>
-		</div>
-		<div id="accountTips">
-			
-		</div>
+	<div id="logincontent" class="content">
+		<label class="setname">用户名:<input  id="username" type="text" placeholder="username"></label>
+		<label class="setname">密&nbsp&nbsp&nbsp&nbsp码:<input id="pass" type="password" placeholder="password"></label>
+		<div id="loginBtn"class="setBtn">登录</div>
 	</div>
 	
-	<div id="cloudSetting" class="content">
+	<div id="accountcontent" class="content">
+		<div class="content">
+			<div id="nowaccount" class="setname">当前账户:</div>
+			<div id="manualcloud"class="setBtn">手动同步</div>
+			<div id="logoutBtn"class="setBtn" style="color:red">注销</div>
+		</div>
+		
 		<div class="setname">自动同步设置</div>
 		<div class="setBtn">每次</div>
-		<div class="setBtn">每日</div>
+		<div class="setBtn">每天</div>
 		<div class="setBtn">每周</div>
+		
 	</div>
+	
+	<div id="tips"></div>
 	
 	
 	<h2>基础设置</h2>
 	<div class="content ">
 		<div class="setname">自动载入笔记是否展开</div>
-		<div class="visible">
+		<div>
 			<div id="visibleshow"class="setBtn">展开</div>
 			<div id="visiblehid" class="setBtn">收拢</div>
 		</div>
