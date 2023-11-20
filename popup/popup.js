@@ -2,6 +2,14 @@ function $(elemId){
 	return document.getElementById(elemId)
 }
 
+//发送信息
+async function SendMessage(message){
+	await chrome.runtime.sendMessage({op:100});//唤醒background
+	let tp=await chrome.runtime.sendMessage(message);
+	return tp;
+}
+
+//获取当前tab
 async function getCurrentTab() {
   let queryOptions = { active: true , currentWindow:true };
   let tab = await chrome.tabs.query(queryOptions);
@@ -17,7 +25,6 @@ $('addnote').addEventListener("click",()=>{
 });
 //跳转设定
 $('setting').addEventListener('click',()=>{
-	chrome.runtime.sendMessage({op:100});
 	chrome.tabs.create({url:"/option/option.html"});
 });
 
@@ -29,4 +36,13 @@ $('publicNote').addEventListener('click',()=>{
 	})();
 });
 
-$('account').innerHTML="当前账户:"+"<span style='color:red'>未登录</span>"
+//账户显示
+(async ()=>{
+	let usr=await SendMessage({op:905});
+	if(usr.login){
+		$('account').innerHTML="当前账号:<span style='color:green'>"+usr.userName+"</span>";
+	}else{
+		$('account').innerHTML="当前账号:<span style='color:red'>未登录</span>";
+	}
+	
+})();

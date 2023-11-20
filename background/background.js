@@ -274,11 +274,52 @@ let CloudServerManager=(()=>{
 	//存储api
 	const Storage=chrome.storage.local;
 	
+	//后端url
+	const backendURL="localhost:8080";
 	
-	//后端接口url
-	const BACKEND_INTERFACE={
+	
+	//fetch
+	async function easyFetch(api,method,content){
+		let ret={ok:false,code:0,data:{},message:"unknow error"};
+		try{
+			let resp=await fetch(backend+api,{
+				method:method,
+				headers: {
+					"Content-Type": "application/json",
+				},
+				body:JSON.stringify(content)
+			});
+			let response=await resp.json();
+		
+			if(resp.ok){
+				ret.ok=true;
+				ret.code=response.code;
+				ret.data=response.data;
+				ret.message=response.message;
+			}else{
+				throw new Error({code:resp.status,data:resp.statusText,message:resp.statusText});
+			}
+			
+		}catch(error){
+			ret.ok=false;
+			if(error.code){
+				ret=error;
+			}else{
+				ret.code=400;
+				ret.message="fetch failed";
+				ret.data=error;
+			}
+		}
+		
+		return ret;
+	}
+		
+	//后端API
+	const BACKEND_API={
 		LOGIN:"",
-		UPATE_NOTE:""
+		LOGOUT:"",
+		UPLOAD_NOTE:"",
+		DOWNLOAD_NOTE:""
 	};
 	
 	
@@ -459,74 +500,133 @@ const OPERATION_CODE={
 	
 };
 
-
-//操作消息接收
-chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
-	let tp="noaction";
-	if(message.op)if(message.op==OPERATION_CODE.LOAD_NOTE){
-		//载入指定url笔记
+//message接收处理
+let MessageHandler=(()=>{
+	let handlers={};
+	
+	//no action
+	handlers[OPERATION_CODE.NO_ACTION]=function(message){
+		//noaction
+		return "noaction";
+	};
+	
+	//载入笔记
+	handlers[OPERATION_CODE.LOAD_NOTE]=function(message){
 		let url=message.url;
+		let tp="load note failed";
 		if(url){
 			tp=AllNoteManager.loadNote(url);
 		}
-	}else if(message.op==OPERATION_CODE.NEW_NOTE){
-		//新建笔记
+		return tp;
+	};
+	
+	//新建笔记
+	handlers[OPERATION_CODE.NEW_NOTE]=function(message){
 		let noteObj=message.noteObj;
+		let tp="new note failed"
 		if(noteObj){
 			AllNoteManager.newNote(noteObj);
 			CloudServerManager.newNote(noteObj);
+			tp="new note finish";
 		}
-	}else if(message.op==OPERATION_CODE.SET_NOTE){
-		//修改笔记
+		return tp;
+	};
+	
+	//修改笔记
+	handlers[OPERATION_CODE.SET_NOTE]=function(message){
 		let noteObj=message.noteObj;
+		let tp="set note failed"
 		if(noteObj){
 			AllNoteManager.setNote(noteObj);
 			CloudServerManager.setNote(noteObj);
+			tp="set note finish";
 		}
-	}else if(message.op==OPERATION_CODE.REMOVE_NOTE){
-		//移除笔记
+		return tp;
+	};
+	
+	
+	//移除笔记
+	handlers[OPERATION_CODE.REMOVE_NOTE]=function(message){
 		let noteObj=message.noteObj;
+		let tp="remove note failed"
 		if(noteObj){
 			AllNoteManager.removeNote(noteObj);
 			NoteRecycleBin.addNote(noteObj);
 			CloudServerManager.removeNote(noteObj);
+			tp="remove note finish";
 		}
-	}else if(message.op==OPERATION_CODE.GET_NOTE_WEB_URL){
-		//获取所有网页的note信息
-		tp=AllNoteManager.getNoteWebUrl();
-	}else if(message.op==OPERATION_CODE.GET_RECYCLE_BIN){
-		//获取回收站内note
-		tp=NoteRecycleBin.getRecycleBin();
-	}else if(message.op==OPERATION_CODE.RECYCLE_NOTE){
-		//还原note
+		return tp;
+	};
+	
+	//获取所有网页的note信息
+	handlers[OPERATION_CODE.GET_NOTE_WEB_URL]=function(message){
+		return AllNoteManager.getNoteWebUrl();
+	};
+	
+	//获取回收站内note
+	handlers[OPERATION_CODE.GET_RECYCLE_BIN]=function(message){
+		return NoteRecycleBin.getRecycleBin();
+	};
+	
+	//还原note
+	handlers[OPERATION_CODE.RECYCLE_NOTE]=function(message){
 		let noteObj=message.noteObj;
+		let tp="recycle note failed";
 		if(noteObj){
 			NoteRecycleBin.removeNote(noteObj);
 			AllNoteManager.addNote(noteObj);
 			CloudServerManager.addNote(noteObj);
+			tp="recycle note finish";
 		}
-	}else if(message.op==OPERATION_CODE.CLEAR_RECYCLE_NOTE){
-		//清空回收站
-		tp=NoteRecycleBin.clearRecycleBin();
-	}else if(message.op==OPERATION_CODE.LOGIN){
-		//账户登录
-		tp=CloudServerManager.login(message.user);
-	}else if(message.op==OPERATION_CODE.LOGOUT){
-		//账户注销
-		tp=CloudServerManager.logout();
-	}else if(message.op==OPERATION_CODE.CLOUD_UPLOAD){
-		//上传笔记
-		tp=CloudServerManager.uploadNote();
-	}else if(message.op==OPERATION_CODE.CLOUD_DOWNLOAD){
-		//下载笔记
-		tp=CloudServerManager.downloadNote();
-	}else if(message.op==OPERATION_CODE.GET_USER_INFO){
-		//获取用户信息
-		tp=CloudServerManager.getUserInfo();
-	}else if(message.op==OPERATION_CODE.GET_PUBLIC_NOTE){
-		//获取当前页面公开笔记
+		return tp;
+	};
+	
+	//清空回收站
+	handlers[OPERATION_CODE.CLEAR_RECYCLE_NOTE]=function(message){
+		return NoteRecycleBin.clearRecycleBin();
+	};
+	
+	//账户登录
+	handlers[OPERATION_CODE.LOGIN]=function(message){
+		return CloudServerManager.login(message.user);
+	};
+	
+	//账户注销
+	handlers[OPERATION_CODE.LOGOUT]=function(message){
+		return CloudServerManager.logout();
+	};
+	
+	//上传笔记
+	handlers[OPERATION_CODE.CLOUD_UPLOAD]=function(message){
+		return CloudServerManager.uploadNote();
+	};
+	
+	//下载笔记
+	handlers[OPERATION_CODE.CLOUD_DOWNLOAD]=function(message){
+		return CloudServerManager.downloadNote();
+	};
+	
+	//获取用户信息
+	handlers[OPERATION_CODE.GET_USER_INFO]=function(message){
+		return CloudServerManager.getUserInfo();
+	};
+	
+	//获取当前页面公开笔记
+	handlers[OPERATION_CODE.GET_PUBLIC_NOTE]=function(message){
 		let url=message.url;
-		tp=CloudServerManager.getPublicNote(url);
+		return CloudServerManager.getPublicNote(url);
+	};
+	
+	return handlers;
+})();
+
+
+//操作消息接收
+chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
+	let tp="noaction";
+	if(message.op){
+		let handler=MessageHandler[message.op];
+		if(handler)tp=handler(message);
 	}
 	
 	(async()=>{
