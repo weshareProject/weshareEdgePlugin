@@ -84,7 +84,7 @@ let NoteManager=(()=>{
 		"ownerId":创建者,
 		"ownerName":创建者昵称,
 		status:状态,
-		url:所在网页url,
+	    url:所在网页url,
 		webtitle:所在网页title,
 		createtime:创建时间
 	}...};
@@ -105,7 +105,13 @@ let NoteManager=(()=>{
 	
 	//生成uid
 	function createUID(){
-		return Date.now();
+		let prefix="temp";
+		let timestamp=Date.now();
+		let postfix=(()=>{
+			return Math.random().toString(36).slice(-8) || "nufix";
+		})();
+		let uid=prefix+timestamp+postfix;
+		return uid;
 	}
 	
 	//获取webURL
@@ -113,12 +119,16 @@ let NoteManager=(()=>{
 		return window.location.href;
 	}
 	
+	//生成webObj
+	function getWebObj(){
+		return {url:getWebUrl(),title:document.title};
+	}
 	
 	//载入数据
 	async function loadNote(){
 		
 		let nt=await SendMessage({op:OPERATION_CODE_NOTE.LOAD_NOTE,url:getWebUrl()});
-		if(nt)NoteList=JSON.parse(nt);
+		if(nt)NoteList=nt;
 		
 		console.log(NoteList);
 		for(let it in NoteList){
@@ -152,7 +162,7 @@ let NoteManager=(()=>{
 		let noteob={"uid":uid,"content":content,"position":{"top":top_,"left":left},"permission":"private","ownerId":"000000000000","ownerName":"me","url":getWebUrl(),"webtitle":document.title,"createtime":Date.now()};
 		NoteList[uid]=noteob;
 		
-		await SendMessage({op:OPERATION_CODE_NOTE.NEW_NOTE,noteObj:NoteList[uid]});//发送到background
+		await SendMessage({op:OPERATION_CODE_NOTE.NEW_NOTE,noteObj:NoteList[uid],webObj:getWebObj()});//发送到background
 		
 		NoteFactory(NoteList[uid]).createNoteDiv();
 		
@@ -163,7 +173,7 @@ let NoteManager=(()=>{
 		let uid=noteObj["uid"];
 		if(uid){
 			NoteList[uid]=noteObj;
-			await SendMessage({op:OPERATION_CODE_NOTE.SET_NOTE,noteObj:NoteList[uid]});//发送到background
+			await SendMessage({op:OPERATION_CODE_NOTE.SET_NOTE,noteObj:NoteList[uid],webObj:getWebObj()});//发送到background
 		}
 	}
 	
@@ -171,7 +181,7 @@ let NoteManager=(()=>{
 	async function removeNote(noteObj){
 		let uid=noteObj["uid"];
 		if(NoteList[uid]){
-			await SendMessage({op:OPERATION_CODE_NOTE.REMOVE_NOTE,noteObj:NoteList[uid]});//发送到background
+			await SendMessage({op:OPERATION_CODE_NOTE.REMOVE_NOTE,noteObj:NoteList[uid],webObj:getWebObj()});//发送到background
 			delete NoteList[uid];
 		}
 	}
@@ -183,7 +193,7 @@ let NoteManager=(()=>{
 		let noteob={"uid":uid,"content":noteObj.content,"position":noteObj.position,"permission":"private","ownerId":"000000000000","ownerName":"me","url":getWebUrl(),"webtitle":document.title,"createtime":Date.now()};
 		NoteList[uid]=noteob;
 		
-		await SendMessage({op:OPERATION_CODE_NOTE.NEW_NOTE,noteObj:NoteList[uid]});//发送到background
+		await SendMessage({op:OPERATION_CODE_NOTE.NEW_NOTE,noteObj:NoteList[uid],webObj:getWebObj()});//发送到background
 		
 		NoteFactory(NoteList[uid]).createNoteDiv();
 		
@@ -393,9 +403,6 @@ function NoteFactory(noteObj){
 		infBtn.classList.add('weshareNoteIcon');
 		infBtn.innerHTML="📅";
 		let infs="";
-		if(noteObj.ownerName){
-			infs+="创建者:"+noteObj.ownerName+"\n";
-		}
 		if(noteObj.createtime){
 			let tm=new Date(noteObj.createtime);
 			infs+="创建时间:"+tm.toLocaleString();

@@ -57,7 +57,7 @@ let AllNoteManager=(()=>{
 			if(tp[ky])res=tp[ky];
 		}
 		//console.log(res);
-		return res;
+		return JSON.parse(res);
 	}
 	
 	//保存指定url的笔记
@@ -73,7 +73,7 @@ let AllNoteManager=(()=>{
 		saveNoteWebUrl();
 		
 		let saveObj={};
-		saveObj["weshareNote-"+url]=notes;
+		saveObj["weshareNote-"+url]=JSON.stringify(notes);
 		await Storage.set(saveObj);
 		if(num<=0){
 			let ky='weshareNote-'+url;
@@ -93,12 +93,12 @@ let AllNoteManager=(()=>{
 		if(!uid||!url)return;
 		
 		let urlObj=NoteWebUrl[url];
-		let notes="{}";
+		let notes={};
 		if(urlObj){
 			urlObj.num++;
 			let tp=await loadNote(url);
 			if(tp){
-				tp=JSON.parse(tp);
+				tp=tp;
 			}else{
 				tp={};
 			}
@@ -107,7 +107,7 @@ let AllNoteManager=(()=>{
 		}else{
 			let otp={};
 			otp[uid]=noteObj;
-			notes=JSON.stringify(otp);
+			notes=otp;
 			urlObj={url:url,title:webtitle,num:1};
 		}
 		await saveNote(urlObj,notes);
@@ -122,12 +122,12 @@ let AllNoteManager=(()=>{
 		
 		if(!uid||!url)return;
 		let urlObj=NoteWebUrl[url];
-		let notes="{}";
+		let notes={};
 		if(urlObj){
 			//读取网页笔记存储
 			let tp=await loadNote(url);
 			if(tp){
-				tp=JSON.parse(tp);
+				tp=tp;
 			}else{
 				tp={};
 			}
@@ -138,7 +138,7 @@ let AllNoteManager=(()=>{
 				newNote(noteObj);
 				return;
 			}
-			notes=JSON.stringify(tp);
+			notes=tp;
 		}else{
 			newNote(noteObj);
 			return;
@@ -156,12 +156,12 @@ let AllNoteManager=(()=>{
 		
 		if(!uid||!url)return;
 		let urlObj=NoteWebUrl[url];
-		let notes="{}";
+		let notes={};
 		if(urlObj){
 			//读取网页笔记存储
 			let tp=await loadNote(url);
 			if(tp){
-				tp=JSON.parse(tp);
+				tp=tp;
 			}else{
 				tp={};
 			}
@@ -173,7 +173,7 @@ let AllNoteManager=(()=>{
 				//没记录,直接return
 				return;
 			}
-			notes=JSON.stringify(tp);
+			notes=tp;
 		}else{
 			//没记录,直接return
 			return;
@@ -471,6 +471,7 @@ CloudServerManager.init();
 
 //与background交互的操作码
 const OPERATION_CODE={
+	
 	//操作码固定3位
 	//100为无操作
 	NO_ACTION:100,
