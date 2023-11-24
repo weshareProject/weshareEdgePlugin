@@ -39,7 +39,7 @@ $('publicNote').addEventListener('click',()=>{
 //账户显示
 (async ()=>{
 	let usr=await SendMessage({op:905});
-	if(usr.login){
+	if(usr.token && usr.userName){
 		$('account').innerHTML="当前账号:<span style='color:green'>"+usr.userName+"</span>";
 	}else{
 		$('account').innerHTML="当前账号:<span style='color:red'>未登录</span>";

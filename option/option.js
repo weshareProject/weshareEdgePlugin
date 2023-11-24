@@ -276,7 +276,7 @@ function makeTips(str,color="black"){
 //切换显示面板
 async function checkAccountContent(){
 	let tp=await SendMessage({op:OPERATION_CODE_OPTION.GET_USER_INFO});
-	if(tp.login && tp.userName){
+	if(tp.token && tp.userName){
 		$('logincontent').style.display="none";
 		$('accountcontent').style.display="block";
 		$('nowaccount').innerHTML="当前账户:<span style='color:green'>"+tp.userName+"</span>";

@@ -268,31 +268,24 @@ let CloudServerManager=(()=>{
 	let waitUploadNotes={};
 	
 	//用户信息
-	//{userId:用户id,userName:用户名,pass:密码,login:是否处于登录状态}
-	let user={userId:"000000",userName:"me",pass:"password",login:false};
+	//{userName:用户名,pass:密码,token:token}
+	let user={userName:null,pass:null,token:null};
 	
 	//存储api
 	const Storage=chrome.storage.local;
 	
-	//后端url
-	const backendURL="localhost:8080";
-	
-	
 	//fetch
-	async function easyFetch(api,method,content){
+	async function easyFetch(url,{method="GET",headers={"Content-Type": "application/json"},content={}}){
 		let ret={ok:false,code:0,data:{},message:"unknow error"};
 		try{
-			let resp=await fetch(backend+api,{
+			let resp=await fetch(url,{
 				method:method,
-				headers: {
-					"Content-Type": "application/json",
-				},
+				headers:headers,
 				body:JSON.stringify(content)
 			});
 			let response=await resp.json();
 		
 			if(resp.ok){
-				ret.ok=true;
 				ret.code=response.code;
 				ret.data=response.data;
 				ret.message=response.message;
@@ -301,7 +294,6 @@ let CloudServerManager=(()=>{
 			}
 			
 		}catch(error){
-			ret.ok=false;
 			if(error.code){
 				ret=error;
 			}else{
@@ -311,44 +303,103 @@ let CloudServerManager=(()=>{
 			}
 		}
 		
+		if(ret.code==200){
+			ret.ok=true;
+		}else{
+			ret.ok=false;
+		}
+		
+		console.log(ret);
+		
 		return ret;
 	}
+	
+	
 		
 	//后端API
-	const BACKEND_API={
-		LOGIN:"",
-		LOGOUT:"",
-		UPLOAD_NOTE:"",
-		DOWNLOAD_NOTE:""
-	};
+	const BACKEND_API=(()=>{
+		//后端url
+		const backendURL="http://127.0.0.1:8080";
+		
+		//登录
+		let LOGIN=backendURL+"/user/login";
+		//注销
+		let LOGOUT=backendURL+"/user/logout";
+		//上传笔记
+		let UPLOAD_NOTE=backendURL+"/note/";
+		//下载笔记
+		let DOWNLOAD_NOTE=backendURL+"/note/";
+		
+		
+		return {
+			LOGIN:LOGIN,
+			LOGOUT:LOGOUT,
+			UPLOAD_NOTE:UPLOAD_NOTE,
+			DOWNLOAD_NOTE:DOWNLOAD_NOTE
+		};
+	})();
 	
 	
 	//登录
 	async function login(usr=user){
-		//TODO
 		if(!usr || !usr.pass || !usr.userName){
 			return "<span style='color:red'>请输入用户名或密码</span>";
 		}
+		let ret="login";
 		
-		user.pass=usr.pass;
-		user.userName=usr.userName;
-		user.login=true;
+		let fetchObj={
+				method:"POST",
+				content:{"username":usr.userName,"password":usr.pass}
+			};
 		
-		console.log(user);
+		let response=await easyFetch(BACKEND_API.LOGIN,fetchObj);
+		if(response.ok){
+			user.pass=usr.pass;
+			user.userName=usr.userName;
+			user.token=response.data.tokenHead+" "+response.data.token;
+		}else{
+			ret=response.message;
+		}
 		
-		return "login";
+		return ret;
 	}
 	
 	//注销
 	async function logout(){
 		//TODO
-		user.login=false;
-		return "logout";
+		let ret="logout";
+		
+		let fetchObj={	
+				method:"POST",
+				headers:{
+					"Content-Type": "application/json",
+					"Authorization":user.token
+				}
+			};
+		console.log(fetchObj);
+		
+		//TODO:auto uploadNote
+		ret=await uploadNote();
+		
+		let response=await easyFetch(BACKEND_API.LOGOUT,fetchObj);
+		if(response.ok){
+			user.pass=null;
+			user.userName=null;
+			user.token=null;
+			ret+="<br>"+"logout";
+		}else{
+			user.pass=null;
+			user.userName=null;
+			user.token=null;
+			ret+="<br>"+response.message;
+		}
+
+		return ret;
 	}
 	
 	//获取用户信息
 	function getUserInfo(){
-		//TODO
+		//TODO:check token
 		return user;
 	}
 	
@@ -356,7 +407,9 @@ let CloudServerManager=(()=>{
 	//上传笔记 
 	async function uploadNote(){
 		//TODO
-		return "uploadNote";
+		let ret="uploadNote";
+		
+		return ret;
 	}
 	
 	//下载笔记 
