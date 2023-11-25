@@ -262,9 +262,8 @@ $('recycleBin').onclick=async ()=>{
 //----账户相关设置begin----
 //更新tips
 let tipsTimer=null;
-function makeTips(str,color="black"){
+function makeTips(str){
 	$('tips').innerHTML=str;
-	$('tips').style.color=color;
 	if(tipsTimer){
 		clearTimeout(tipsTimer);
 	}
@@ -280,11 +279,11 @@ async function checkAccountContent(){
 		$('logincontent').style.display="none";
 		$('accountcontent').style.display="block";
 		$('nowaccount').innerHTML="当前账户:<span style='color:green'>"+tp.userName+"</span>";
-		if(!tipsTimer)makeTips("账户已登录","green");
+		if(!tipsTimer)makeTips("<span style='color:green'>账户已登录</span>");
 	}else{
 		$('logincontent').style.display="block";
 		$('accountcontent').style.display="none";
-		if(!tipsTimer)makeTips("账户未登录","red");
+		if(!tipsTimer)makeTips("<span style='color:red'>账户未登录</span>");
 	}
 };
 checkAccountContent();
@@ -294,6 +293,7 @@ $('loginBtn').onclick=async ()=>{
 	let userName=$('username').value;
 	let pass=$('pass').value;
 	let usr={userName:userName,pass:pass};
+	$('tips').innerHTML="<span style='color:purple'>请勿关闭浏览器<br>正在登录...</span>";
 	let rsp=await SendMessage({op:OPERATION_CODE_OPTION.LOGIN,user:usr});
 	makeTips(rsp);
 	await checkAccountContent();
@@ -302,6 +302,7 @@ $('loginBtn').onclick=async ()=>{
 //注销
 $('logoutBtn').onclick=async ()=>{
 	//TODO:获取userName和password
+	$('tips').innerHTML="<span style='color:purple'>请勿关闭浏览器<br>正在同步,请耐心等待...</span>";
 	let rsp=await SendMessage({op:OPERATION_CODE_OPTION.LOGOUT});
 	makeTips(rsp);
 	await checkAccountContent();

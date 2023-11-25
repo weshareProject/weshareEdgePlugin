@@ -407,7 +407,7 @@ let CloudServerManager=(()=>{
 	//上传笔记 
 	async function uploadNote(){
 		//TODO
-		let ret="uploadNote";
+		let ret="uploadNote failed";
 		
 		return ret;
 	}
