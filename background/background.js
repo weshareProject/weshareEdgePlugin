@@ -488,13 +488,11 @@ let CloudServerManager=(()=>{
 		//TODO
 		console.log('getPublicNote');
 		let tp=await AllNoteManager.loadNote(url);
-		if(tp)tp=JSON.parse(tp);
-		else tp={};
+		if(!tp)tp={};
 		let res=[];
 		for(let i in tp){
 			res.push(tp[i]);
 		}
-		res=JSON.stringify(res);
 		return res;
 	}
 	

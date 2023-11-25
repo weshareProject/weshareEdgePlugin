@@ -533,7 +533,7 @@ let PublicNoteManager=(()=>{
 	async function load(){
 		let tp=await SendMessage({op:OPERATION_CODE_NOTE.GET_PUBLIC_NOTE,url:getWebUrl()});
 		if(tp){
-			publicNotes=JSON.parse(tp);
+			publicNotes=tp;
 		}
 		notesIndex=0;
 		console.log(publicNotes);
