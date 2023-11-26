@@ -362,6 +362,7 @@ let CloudServerManager=(()=>{
 			sav["weshareUser"]=JSON.stringify(user);
 			Storage.set(sav);
 		}else{
+			user={userName:null,pass:null,token:null,expirationTime:null};
 			ret=response.message;
 		}
 		

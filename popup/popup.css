@@ -23,4 +23,9 @@ body{
 	border:0.1rem solid black;
 	padding:0.1rem 0.5rem;
 	margin:0 0.5rem;
+	color:black;
+}
+
+.btn:hover{
+	color:blue;
 }

@@ -36,6 +36,18 @@ $('publicNote').addEventListener('click',()=>{
 	})();
 });
 
+//侧边栏
+$('sidebar').addEventListener('click',()=>{
+	(async ()=>{
+		let tab=await getCurrentTab();
+		if(chrome.sidePanel && tab[0]){
+			console.log('open sidebar');
+			chrome.sidePanel.open({tabId:tab[0].id});
+		}
+	})();
+});
+
+
 //账户显示
 (async ()=>{
 	let usr=await SendMessage({op:905});
