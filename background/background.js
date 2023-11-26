@@ -64,6 +64,7 @@ let AllNoteManager=(()=>{
 	async function saveNote(urlObj,notes){
 		//console.log(urlObj);
 		let num=urlObj.num;
+		//num=Object.keys(notes).length;
 		let url=urlObj.url;
 		let title=urlObj.title;
 		NoteWebUrl[url]={url:url,title:title,num:num};
@@ -97,13 +98,9 @@ let AllNoteManager=(()=>{
 		if(urlObj){
 			urlObj.num++;
 			let tp=await loadNote(url);
-			if(tp){
-				tp=tp;
-			}else{
-				tp={};
-			}
+			if(!tp)tp={};
 			tp[uid]=noteObj;
-			notes=JSON.stringify(tp);
+			notes=tp;
 		}else{
 			let otp={};
 			otp[uid]=noteObj;
@@ -126,11 +123,7 @@ let AllNoteManager=(()=>{
 		if(urlObj){
 			//读取网页笔记存储
 			let tp=await loadNote(url);
-			if(tp){
-				tp=tp;
-			}else{
-				tp={};
-			}
+			if(!tp)tp={};
 			//如果有笔记记录则修改,没有则新增
 			if(tp[uid]){
 				tp[uid]=noteObj;
@@ -160,11 +153,7 @@ let AllNoteManager=(()=>{
 		if(urlObj){
 			//读取网页笔记存储
 			let tp=await loadNote(url);
-			if(tp){
-				tp=tp;
-			}else{
-				tp={};
-			}
+			if(!tp)tp={};
 			
 			if(tp[uid]){
 				urlObj.num--;
@@ -267,12 +256,93 @@ let CloudServerManager=(()=>{
 	//等待上传的笔记
 	let waitUploadNotes={};
 	
+	//存储api
+	const Storage=chrome.storage.local;
+	
+	
+	//笔记状态
+	const NOTE_STATUS={
+		NEW:1,//新增
+		MOD:2,//修改 
+		DEL:3//删除
+	}
+	
+	//深拷贝object
+	function clone(obj){
+		return {...obj};
+	}
+	
+	
+	//增
+	function newNote(noteObj){
+		let uid=noteObj.uid;
+		let ntObj=clone(noteObj);
+		ntObj["status"]=NOTE_STATUS.NEW;
+		if(waitUploadNotes[uid] && waitUploadNotes[uid]["status"]==NOTE_STATUS.DEL){
+			if(waitUploadNotes[uid]["prestatus"]){
+				ntObj["status"]=waitUploadNotes[uid]["prestatus"];//还原的笔记,状态也还原 
+			}
+			//若没有记录前一个状态,代表前一个状态时笔记已经被upload过了,那么还原就是新增
+		}
+		waitUploadNotes[uid]=ntObj;
+		saveWaitUploadNotes();
+	}
+	
+	//改
+	function setNote(noteObj){
+		let uid=noteObj.uid;
+		let ntObj=clone(noteObj);
+		ntObj["status"]=NOTE_STATUS.MOD;
+		if(waitUploadNotes[uid] && waitUploadNotes[uid]["status"]==NOTE_STATUS.NEW){
+			ntObj["status"]=NOTE_STATUS.NEW;//新增的笔记,状态依然记录新增
+		}
+		waitUploadNotes[uid]=ntObj;
+		saveWaitUploadNotes();
+	}
+	
+	//删
+	function removeNote(noteObj){
+		let uid=noteObj.uid;
+		let ntObj=clone(noteObj);
+		if(waitUploadNotes[uid]){
+			ntObj["prestatus"]=waitUploadNotes[uid]["status"];//记录删除之前的状态,还原笔记时会使用
+		}
+		ntObj["status"]=NOTE_STATUS.DEL;
+		waitUploadNotes[uid]=ntObj;
+		saveWaitUploadNotes();
+	}
+	
+	//载入所有waitUploadNotes
+	async function loadWaitUploadNotes(){
+		let tp=Storage.get("waitUploadNotes");
+		if(tp["waitUploadNotes"])waitUploadNotes=JSON.parse(tp["waitUploadNotes"]);
+	}
+	
+	
+	//保存所有waitUploadNotes
+	async function saveWaitUploadNotes(){
+		console.log(waitUploadNotes);
+		await Storage.set({"waitUploadNotes":JSON.stringify(waitUploadNotes)});
+	}
+	
+	//获取指定url界面所有public笔记
+	async function getPublicNote(url){
+		//TODO
+		console.log('getPublicNote');
+		let tp=await AllNoteManager.loadNote(url);
+		if(!tp)tp={};
+		let res=[];
+		for(let i in tp){
+			res.push(tp[i]);
+		}
+		return res;
+	}
+	
+	
 	//用户信息
 	//{userName:用户名,pass:密码,token:token，expirationTime:token过期时间点}
 	let user={userName:null,pass:null,token:null,expirationTime:null};
 	
-	//存储api
-	const Storage=chrome.storage.local;
 	
 	//fetch
 	async function easyFetch(url,{method="GET",headers={"Content-Type": "application/json"},content={}}){
@@ -361,8 +431,13 @@ let CloudServerManager=(()=>{
 			let sav={};
 			sav["weshareUser"]=JSON.stringify(user);
 			Storage.set(sav);
+			let dlret=await downloadNote();
+			ret+="<br>"+dlret;
 		}else{
-			user={userName:null,pass:null,token:null,expirationTime:null};
+			user.pass=null;
+			user.userName=null;
+			user.token=null;
+			user.expirationTime=null;
 			ret=response.message;
 		}
 		
@@ -382,7 +457,7 @@ let CloudServerManager=(()=>{
 				}
 			};
 		
-		//TODO:auto uploadNote
+		//进行上传
 		ret=await uploadNote();
 		
 		let response=await easyFetch(BACKEND_API.LOGOUT,fetchObj);
@@ -409,8 +484,6 @@ let CloudServerManager=(()=>{
 		}
 	}
 	
-	
-	
 	//获取用户信息
 	async function getUserInfo(){
 		await checkToken();
@@ -422,8 +495,38 @@ let CloudServerManager=(()=>{
 	async function uploadNote(){
 		let ret="uploadNote failed";
 		await checkToken();
+		let newnotes=[];
+		let modnotes=[];
+		let delnotes=[];
 		
-		//TODO
+		for(let i in waitUploadNotes){
+			let handleNote=waitUploadNotes[i];
+			//console.log(handleNote);
+			if(handleNote['status']==NOTE_STATUS.DEL){
+				delnotes.push(i);
+			}else{
+				let uploadObj={
+					"content": handleNote.content,
+					"createTime":handleNote.createtime,
+					"id": handleNote.uid,
+					"isPublic":0,
+					"url":handleNote.url,
+					"position":handleNote.position
+				};
+				
+				if(handleNote['status']==NOTE_STATUS.NEW){
+					newnotes.push(uploadObj);
+				}else if(handleNote['status']==NOTE_STATUS.MOD){
+					modnotes.push(uploadObj);
+				}	
+			}
+		}
+		
+		console.log(newnotes);
+		console.log(modnotes);
+		console.log(delnotes);
+		
+		//TODO fetch
 		
 		return ret;
 	}
@@ -438,84 +541,8 @@ let CloudServerManager=(()=>{
 		return ret;
 	}
 	
-	//笔记状态
-	const NOTE_STATUS={
-		NEW:1,//新增
-		MOD:2,//修改 
-		DEL:3//删除
-	}
 	
-	//深拷贝object
-	function clone(obj){
-		return {...obj};
-	}
-	
-	
-	//增
-	function newNote(noteObj){
-		let uid=noteObj.uid;
-		let ntObj=clone(noteObj);
-		ntObj["status"]=NOTE_STATUS.NEW;
-		if(waitUploadNotes[uid] && waitUploadNotes[uid]["status"]==NOTE_STATUS.DEL){
-			if(waitUploadNotes[uid]["prestatus"]){
-				ntObj["status"]=waitUploadNotes[uid]["prestatus"];//还原的笔记,状态也还原 
-			}
-			//若没有记录前一个状态,代表前一个状态时笔记已经被upload过了,那么还原就是新增
-		}
-		waitUploadNotes[uid]=ntObj;
-		saveWaitUploadNotes();
-	}
-	
-	//改
-	function setNote(noteObj){
-		let uid=noteObj.uid;
-		let ntObj=clone(noteObj);
-		ntObj["status"]=NOTE_STATUS.MOD;
-		if(waitUploadNotes[uid] && waitUploadNotes[uid]["status"]==NOTE_STATUS.NEW){
-			ntObj["status"]=NOTE_STATUS.NEW;//新增的笔记,状态依然记录新增
-		}
-		waitUploadNotes[uid]=ntObj;
-		saveWaitUploadNotes();
-	}
-	
-	//删
-	function removeNote(noteObj){
-		let uid=noteObj.uid;
-		let ntObj=clone(noteObj);
-		if(waitUploadNotes[uid]){
-			ntObj["prestatus"]=waitUploadNotes[uid]["status"];//记录删除之前的状态,还原笔记时会使用
-		}
-		ntObj["status"]=NOTE_STATUS.DEL;
-		waitUploadNotes[uid]=ntObj;
-		saveWaitUploadNotes();
-	}
-	
-	//载入所有waitUploadNotes
-	async function loadWaitUploadNotes(){
-		let tp=Storage.get("waitUploadNotes");
-		if(tp["waitUploadNotes"])waitUploadNotes=JSON.parse(tp["waitUploadNotes"]);
-	}
-	
-	
-	//保存所有waitUploadNotes
-	async function saveWaitUploadNotes(){
-		console.log(waitUploadNotes);
-		await Storage.set({"waitUploadNotes":JSON.stringify(waitUploadNotes)});
-	}
-	
-	//获取指定url界面所有public笔记
-	async function getPublicNote(url){
-		//TODO
-		console.log('getPublicNote');
-		let tp=await AllNoteManager.loadNote(url);
-		if(!tp)tp={};
-		let res=[];
-		for(let i in tp){
-			res.push(tp[i]);
-		}
-		return res;
-	}
-	
+
 	//初始化
 	async function init(){
 		loadWaitUploadNotes();
