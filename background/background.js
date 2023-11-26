@@ -185,7 +185,7 @@ let AllNoteManager=(()=>{
 	
 	//获取NoteWebUrl
 	function getNoteWebUrl(){
-		return JSON.stringify(NoteWebUrl);
+		return NoteWebUrl;
 	}
 	
 	return {
@@ -268,8 +268,8 @@ let CloudServerManager=(()=>{
 	let waitUploadNotes={};
 	
 	//用户信息
-	//{userName:用户名,pass:密码,token:token}
-	let user={userName:null,pass:null,token:null};
+	//{userName:用户名,pass:密码,token:token，expirationTime:token过期时间点}
+	let user={userName:null,pass:null,token:null,expirationTime:null};
 	
 	//存储api
 	const Storage=chrome.storage.local;
@@ -357,6 +357,10 @@ let CloudServerManager=(()=>{
 			user.pass=usr.pass;
 			user.userName=usr.userName;
 			user.token=response.data.tokenHead+" "+response.data.token;
+			user.expirationTime=Date.now()+30*1000;//TODO:后台返回生存时间
+			let sav={};
+			sav["weshareUser"]=JSON.stringify(user);
+			Storage.set(sav);
 		}else{
 			ret=response.message;
 		}
@@ -376,46 +380,61 @@ let CloudServerManager=(()=>{
 					"Authorization":user.token
 				}
 			};
-		console.log(fetchObj);
 		
 		//TODO:auto uploadNote
 		ret=await uploadNote();
 		
 		let response=await easyFetch(BACKEND_API.LOGOUT,fetchObj);
+		user.pass=null;
+		user.userName=null;
+		user.token=null;
+		user.expirationTime=null;
 		if(response.ok){
-			user.pass=null;
-			user.userName=null;
-			user.token=null;
 			ret+="<br>"+"logout";
 		}else{
-			user.pass=null;
-			user.userName=null;
-			user.token=null;
 			ret+="<br>"+response.message;
 		}
 
 		return ret;
 	}
 	
+	//检查token，若过期则重新登录
+	async function checkToken(){
+		if(user.token && user.expirationTime){
+			let ntime=Date.now();
+			if(ntime>user.expirationTime){
+				await login();
+			}
+		}
+	}
+	
+	
+	
 	//获取用户信息
-	function getUserInfo(){
-		//TODO:check token
+	async function getUserInfo(){
+		await checkToken();
 		return user;
 	}
 	
 	
 	//上传笔记 
 	async function uploadNote(){
-		//TODO
 		let ret="uploadNote failed";
+		await checkToken();
+		
+		//TODO
 		
 		return ret;
 	}
 	
 	//下载笔记 
 	async function downloadNote(){
+		let ret="downloadNote failed";
+		await checkToken();
+		
 		//TODO
-		return "downloadNote";
+		
+		return ret;
 	}
 	
 	//笔记状态
@@ -499,6 +518,10 @@ let CloudServerManager=(()=>{
 	//初始化
 	async function init(){
 		loadWaitUploadNotes();
+		
+		let tp=await Storage.get("weshareUser");
+		if(tp["weshareUser"])user=JSON.parse(tp["weshareUser"]);
+		await checkToken();
 	}
 	
 	

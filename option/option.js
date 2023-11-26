@@ -228,10 +228,9 @@ function colorBtnFactory(cbtnObj){
 async function weburlInit(){
 	let tp=await SendMessage({op:OPERATION_CODE_OPTION.GET_NOTE_WEB_URL});
 	let noteweb=$('noteweb');
-	if(tp=="{}"){
+	if(tp=={}){
 		noteweb.innerHTML="<div style='color:red;font-size:1.5rem;'>暂无笔记</div>";
 	}else{
-		tp=JSON.parse(tp);
 		for(let i in tp){
 			let it=tp[i];
 			let url=it["url"];
@@ -301,12 +300,18 @@ $('loginBtn').onclick=async ()=>{
 
 //注销
 $('logoutBtn').onclick=async ()=>{
-	//TODO:获取userName和password
 	$('tips').innerHTML="<span style='color:purple'>请勿关闭浏览器<br>正在同步,请耐心等待...</span>";
 	let rsp=await SendMessage({op:OPERATION_CODE_OPTION.LOGOUT});
 	makeTips(rsp);
 	await checkAccountContent();
 };
+
+//手动同步
+$('manualcloud').onclick=async ()=>{
+	$('tips').innerHTML="<span style='color:purple'>请勿关闭浏览器<br>正在同步,请耐心等待...</span>";
+	let rsp=await SendMessage({op:OPERATION_CODE_OPTION.CLOUD_UPLOAD});
+	makeTips(rsp);	
+}
 
 //----账户相关设置end----
 
