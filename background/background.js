@@ -383,8 +383,6 @@ let CloudServerManager=(()=>{
 		
 		return ret;
 	}
-	
-	
 		
 	//后端API
 	const BACKEND_API=(()=>{
@@ -396,9 +394,9 @@ let CloudServerManager=(()=>{
 		//注销
 		let LOGOUT=backendURL+"/user/logout";
 		//上传笔记
-		let UPLOAD_NOTE=backendURL+"/note/";
+		let UPLOAD_NOTE=backendURL+"/note/s";
 		//下载笔记
-		let DOWNLOAD_NOTE=backendURL+"/note/";
+		let DOWNLOAD_NOTE=backendURL+"/note/s";
 		
 		
 		return {
@@ -427,7 +425,7 @@ let CloudServerManager=(()=>{
 			user.pass=usr.pass;
 			user.userName=usr.userName;
 			user.token=response.data.tokenHead+" "+response.data.token;
-			user.expirationTime=Date.now()+30*1000;//TODO:后台返回生存时间
+			user.expirationTime=Date.now()+300*1000;//TODO:后台返回生存时间
 			let sav={};
 			sav["weshareUser"]=JSON.stringify(user);
 			Storage.set(sav);
@@ -526,7 +524,59 @@ let CloudServerManager=(()=>{
 		console.log(modnotes);
 		console.log(delnotes);
 		
-		//TODO fetch
+		let newresponse={ok:false};
+		let modresponse={ok:false};
+		let delresponse={ok:false};
+		let fetchObj={
+			headers:{
+				"Content-Type": "application/json",
+				"Authorization":user.token
+			}
+		};
+		
+		//上传新建笔记
+		if(newnotes.length>0){
+			fetchObj.method="POST";
+			fetchObj.content=newnotes;
+			//newresponse=await easyFetch(BACKEND_API.UPLOAD_NOTE,fetchObj);
+			
+			if(newresponse.ok){
+				for(let i=0;i<newnotes.length;i++){
+					let uid=newnotes[i].uid;
+					delete waitUploadNotes[uid];
+				}
+			}	
+		}
+		
+		//上传修改笔记
+		if(modnotes.length>0){
+			fetchObj.method="PUT";
+			fetchObj.content=modnotes;
+			//modresponse=await easyFetch(BACKEND_API.UPLOAD_NOTE,fetchObj); 
+			
+			if(modresponse.ok){
+				for(let i=0;i<modnotes.length;i++){
+					let uid=modnotes[i].uid;
+					delete waitUploadNotes[uid];
+				}
+			}
+		}
+		
+		//上传删除笔记
+		if(delnotes.length>0){
+			fetchObj.method="DELETE";
+			fetchObj.content=delnotes;
+			//delresponse=await easyFetch(BACKEND_API.UPLOAD_NOTE,fetchObj); 
+		
+			if(delresponse.ok){
+				for(let i=0;i<delnotes.length;i++){
+					let uid=delnotes[i];
+					delete waitUploadNotes[uid];
+				}
+			}
+		}
+		
+		saveWaitUploadNotes();
 		
 		return ret;
 	}
