@@ -228,26 +228,27 @@ function colorBtnFactory(cbtnObj){
 async function weburlInit(){
 	let tp=await SendMessage({op:OPERATION_CODE_OPTION.GET_NOTE_WEB_URL});
 	let noteweb=$('noteweb');
-	if(tp=={}){
-		noteweb.innerHTML="<div style='color:red;font-size:1.5rem;'>暂无笔记</div>";
-	}else{
-		for(let i in tp){
-			let it=tp[i];
-			let url=it["url"];
-			let title=it['title'];
-			if(!title)title=url;
-			let num=it['num'];
-			let dv=document.createElement('div');
-			dv.innerHTML="<span style='color:blue'>["+num+"笔记]</span>"+title;
-			dv.title=url;
-			dv.onclick=()=>{
-				chrome.tabs.create({url:url});
-			}
-			dv.classList.add("webitem");
-			noteweb.appendChild(dv);
+	let flag=true;
+	
+	for(let i in tp){
+		let it=tp[i];
+		let url=it["url"];
+		let title=it['title'];
+		if(!title)title=url;
+		let num=it['num'];
+		let dv=document.createElement('div');
+		dv.innerHTML="<span style='color:blue'>["+num+"笔记]</span>"+title;
+		dv.title=url;
+		dv.onclick=()=>{
+			chrome.tabs.create({url:url});
 		}
+		dv.classList.add("webitem");
+		noteweb.appendChild(dv);
+		flag=false;
 	}
+	if(flag)noteweb.innerHTML="<div style='color:red;font-size:1.5rem;'>暂无笔记</div>";
 }
+
 weburlInit();
 
 //打开回收站
