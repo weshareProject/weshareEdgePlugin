@@ -32,7 +32,9 @@ $('setting').addEventListener('click',()=>{
 $('publicNote').addEventListener('click',()=>{
 	(async ()=>{
 		let tab=await getCurrentTab();
-		chrome.tabs.sendMessage(tab[0].id,{op:"publicNoteSwitch"});
+		if(tab[0]){
+			chrome.tabs.sendMessage(tab[0].id,{op:"publicNoteSwitch"});
+		}
 	})();
 });
 
@@ -46,6 +48,19 @@ $('sidebar').addEventListener('click',()=>{
 		}
 	})();
 });
+
+//定位笔记
+$('locnote').addEventListener('click',()=>{
+	(async ()=>{
+		let tab=await getCurrentTab();
+		if(tab[0]){
+			console.log('open sidebar');
+			chrome.tabs.sendMessage(tab[0].id,{op:"locateNote"});
+		}
+	})();
+});
+
+
 
 
 //账户显示

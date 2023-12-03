@@ -199,6 +199,35 @@ let NoteManager=(()=>{
 		
 	}
 	
+	//滚动定位笔记
+	let locateIndex=-1;
+	function locateNote(){
+		let noteKeys=Object.keys(NoteList);
+		if(noteKeys.length<=0){
+			alert('本页面无笔记');
+			return;
+		}
+		
+		
+		if(locateIndex<0){
+			locateIndex=0
+		}else{
+			locateIndex++;
+		}
+		if(locateIndex>=noteKeys.length)locateIndex=0;
+		let uid=noteKeys[locateIndex];
+		let noteObj=NoteList[uid];
+		
+		let pos=noteObj.position;
+		if(pos&&pos.top&&pos.left){
+			let top_=parseInt(pos.top);
+			let left_=parseInt(pos.left);
+			let ht=document.documentElement.clientHeight || document.body.clientHeight;
+			window.scrollTo({left:left_,top:top_-ht/4,behavior:'smooth'});
+			console.log(pos);
+		}
+	}
+	
 
 	return {
 		init:init,
@@ -206,7 +235,8 @@ let NoteManager=(()=>{
 		newNote:newNote,
 		setNote:setNote,
 		removeNote:removeNote,
-		cloneNote:cloneNote
+		cloneNote:cloneNote,
+		locateNote:locateNote
 	}
 	
 })();

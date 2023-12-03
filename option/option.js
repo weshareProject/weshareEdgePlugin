@@ -246,7 +246,9 @@ async function weburlInit(){
 		noteweb.appendChild(dv);
 		flag=false;
 	}
-	if(flag)noteweb.innerHTML="<div style='color:red;font-size:1.5rem;'>暂无笔记</div>";
+	if(flag){
+		noteweb.innerHTML="<div style='color:red;font-size:1.5rem;'>暂无笔记</div>";
+	}
 }
 
 weburlInit();
