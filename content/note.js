@@ -226,6 +226,15 @@ let NoteManager=(()=>{
 			window.scrollTo({left:left_,top:top_-ht/4,behavior:'smooth'});
 			console.log(pos);
 		}
+		
+		let targetDiv=document.querySelector('div[data-uid="'+uid+'"]');
+		targetDiv.oncontextmenu();
+		targetDiv.animate({
+			opacity: [ 0,1 ]
+		},{
+			duration: 500,
+			iterations: 4,
+		});
 	}
 	
 
@@ -400,7 +409,8 @@ function NoteFactory(noteObj){
 		NoteParentDiv.style.top=noteObj["position"]["top"];
 		NoteParentDiv.style.left=noteObj["position"]["left"];
 		addDragFunc(NoteParentDiv);//添加拖拽功能
-		
+		NoteParentDiv.dataset.uid=noteObj.uid;
+		NoteParentDiv.oncontextmenu=show;
 		
 		//内部主题创建
 		let NoteBody=document.createElement("div");
