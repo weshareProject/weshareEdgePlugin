@@ -238,8 +238,7 @@ let NoteManager=(()=>{
 		let sel=window.getSelection();
 		if(sel.rangeCount&&sel.getRangeAt){
 			range=sel.getRangeAt(0);
-			sel.removeAllRanges();
-			sel.addRange(range);
+			sel.empty();
 			if(!range.collapsed){
 				let uid=createUID();
 				let newHighlight=Highlight(uid,range);

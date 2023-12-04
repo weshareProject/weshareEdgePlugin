@@ -3,7 +3,7 @@
 chrome.runtime.onInstalled.addListener(()=>{
 	chrome.contextMenus.create({
 		title:"添加笔记",
-		contexts:["all"],
+		contexts:["page"],
 		id:"weshareAddnote"
 	});
 	

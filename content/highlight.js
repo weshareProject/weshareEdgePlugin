@@ -1,23 +1,26 @@
 
-//获取所有节点
-let allNode=(()=>{
+//节点处理者
+let NodeProcessor=(()=>{
 	
 	let nodes=[];//存储所有节点
 	
 	//获取所有节点
 	function getAllNodes(){
 		nodes = [];
-		let walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);
+		/*
+		let walker=document.createTreeWalker(document.body);
 		for(;walker.nextNode();){
 			nodes.push(walker.currentNode);
 		}
+		*/
+		nodes=document.body.querySelectorAll('*');
 	}
 	
 	//寻找特点节点在所有节点中的index
 	function findIndex(node){
 		let res = -1;
 		for(let i=0;i<nodes.length;i++){
-			if(nodes[i]==node){
+			if(nodes[i]===node){
 				res=i;
 				break;
 			}
@@ -33,6 +36,7 @@ let allNode=(()=>{
 	//返回范围内的textNode节点
 	function getTextNodeByFragment(fragment){
 		let res=[];
+		
 		let childNodes=fragment.childNodes;
 		for(let i=0;i<childNodes.length;i++){
 			let nownode=childNodes[i];
@@ -42,10 +46,11 @@ let allNode=(()=>{
 			if(nownode.nodeType==Node.TEXT_NODE){
 				res.push(nownode);
 			}else{
-				let txtnodes=getTextNodeByFragment(nownode);
+				let txtnodes=getTextNodeByFragment(nownode);//递归获取子节点
 				if(txtnodes.length>0){
 					for(let j=0;j<txtnodes.length;j++){
 						res.push(txtnodes[j]);
+						console.log(txtnodes[j].nodeValue);
 					}
 				}
 			}
@@ -55,7 +60,8 @@ let allNode=(()=>{
 	
 	//初始化
 	function init(){
-		allNode.getAllNodes();
+		document.body.normalize();
+		NodeProcessor.getAllNodes();
 	}
 	
 	return {
@@ -67,7 +73,7 @@ let allNode=(()=>{
 		
 	}
 })();
-allNode.init();
+NodeProcessor.init();
 
 function Highlight(uid,range){
 	//内容
@@ -90,6 +96,7 @@ function Highlight(uid,range){
 	//高亮范围
 	function highlight(range){
 		console.log(range);
+		
 		if(!range){
 			alert('选区获取失败');
 			success=false;
@@ -102,10 +109,9 @@ function Highlight(uid,range){
 			return;
 		}
 		
-		content=range.toString();
 		
 		let fragment=range.extractContents();
-		let textnodes=allNode.getTextNodeByFragment(fragment);
+		let textnodes=NodeProcessor.getTextNodeByFragment(fragment);
 		
 		if(textnodes.length<=0){
 			range.insertNode(fragment);
@@ -114,26 +120,77 @@ function Highlight(uid,range){
 			return;
 		}
 		
-		success=true;
-		for(let i=0;i<textnodes.length;i++){
-			handlenode=textnodes[i];
+		
+		if(startContainer===endContainer&&endOffset<=textnodes[0].nodeValue.length){
+			let tsplt=textnodes[0].splitText(startOffset);
+			console.log(tsplt);
+			tsplt=tsplt.splitText(endOffset-startOffset);
+			console.log(tsplt);
+			let parnode=tsplt.parentNode;
+			let handlenode=parnode.childNodes[1];
 			
-			let hlnode=document.createElement('div');
+			
+			let hlnode=document.createElement('span');
 			hlnode.classList.add('highlight');
 			hlnode.style.setProperty('--hlcolor',hlcolor);
 			hlnode.dataset.uid=uid;
 			hlnode.appendChild(handlenode.cloneNode());
-			
 			handlenode.parentNode.replaceChild(hlnode,handlenode);
 			nodes.push(hlnode);
-		
+			hlnode.addEventListener('dblclick',()=>{
+				removeHighlight();
+			});
+		}else{
+			let hlnode=null;
+			let tsplt=textnodes[0].splitText(startOffset);
+			let fstnode=tsplt.parentNode.childNodes[1];
+			
+			
+			hlnode=document.createElement('span');
+			hlnode.classList.add('highlight');
+			hlnode.style.setProperty('--hlcolor',hlcolor);
+			hlnode.dataset.uid=uid;
+			hlnode.appendChild(fstnode.cloneNode());
+			fstnode.parentNode.replaceChild(hlnode,fstnode);
+			nodes.push(hlnode);
+			hlnode.addEventListener('dblclick',()=>{
+				removeHighlight();
+			});
+			
+			for(let i=1;i<textnodes.length-1;i++){
+				handlenode=textnodes[i];
+				
+				hlnode=document.createElement('span');
+				hlnode.classList.add('highlight');
+				hlnode.style.setProperty('--hlcolor',hlcolor);
+				hlnode.dataset.uid=uid;
+				hlnode.appendChild(handlenode.cloneNode());
+				
+				handlenode.parentNode.replaceChild(hlnode,handlenode);
+				nodes.push(hlnode);
+			
+				hlnode.addEventListener('dblclick',()=>{
+					removeHighlight();
+				});
+			}
+			
+			console.log(textnodes[textnodes.length-1].nodeValue);
+			tsplt=textnodes[textnodes.length-1].splitText(endOffset);
+			let lstnode=tsplt.parentNode.firstChild;
+			hlnode=document.createElement('span');
+			hlnode.classList.add('highlight');
+			hlnode.style.setProperty('--hlcolor',hlcolor);
+			hlnode.dataset.uid=uid;
+			hlnode.appendChild(lstnode.cloneNode());
+			lstnode.parentNode.replaceChild(hlnode,lstnode);
+			nodes.push(hlnode);
 			hlnode.addEventListener('dblclick',()=>{
 				removeHighlight();
 			});
 		}
 		
 		range.insertNode(fragment);
-		
+		success=true;
 	}
 	
 	//移除高亮
@@ -166,18 +223,16 @@ function Highlight(uid,range){
 		}
 		
 		startContainerIndex=position.startContainerIndex;
-		startOffset=range.startOffset;
-		endContainerIndex=range.endContainerIndex;
-		endOffset=range.endOffset;
+		startOffset=position.startOffset;
+		endContainerIndex=position.endContainerIndex;
+		endOffset=position.endOffset;
 		
-		startContainer=allNode.getNodeByIndex(startContainerIndex);
-		endContainer=allNode.getNodeByIndex(endContainerIndex);
+		startContainer=NodeProcessor.getNodeByIndex(startContainerIndex);
+		endContainer=NodeProcessor.getNodeByIndex(endContainerIndex);
 		
-		if(startContainer&&endContainer){
-			range=new Range();
-			range.setStart(startContainer,startOffset);
-			range.setEnd(endContainer,endOffset);
-		}	
+		range=new Range();
+		range.setStart(startContainer,0);
+		range.setEnd(endContainer,0);
 	}
 	
 	//设置颜色
@@ -218,15 +273,24 @@ function Highlight(uid,range){
 	//初始化
 	function init(){
 		if(range){
+			
+			content=range.toString();
+			
 			startContainer=range.startContainer;
 			startOffset=range.startOffset;
 			endContainer=range.endContainer;
 			endOffset=range.endOffset;
 			
-			startContainerIndex=allNode.findIndex(startContainer);
-			endContainerIndex=allNode.findIndex(endContainer);
+			range.setStartBefore(startContainer);
+			range.setEndAfter(endContainer);
 			
-			console.log(startContainerIndex+"  "+endContainerIndex);
+			startContainer=range.startContainer;
+			endContainer=range.endContainer;
+		
+			startContainerIndex=NodeProcessor.findIndex(startContainer);
+			endContainerIndex=NodeProcessor.findIndex(endContainer);
+			
+			console.log({'startContainerIndex':startContainerIndex,'endContainerIndex':endContainerIndex,'startOffset':startOffset,'endOffset':endOffset});
 		}
 		highlight(range);
 	}
