@@ -90,6 +90,9 @@ let NoteManager=(()=>{
 	}...};
 	*/
 	
+	//笔记div实体维护
+	let NoteEntities={};
+	
 	//发信息
 	async function SendMessage(messageObj){
 		await chrome.runtime.sendMessage({op:OPERATION_CODE_NOTE.NO_ACTION});
@@ -134,7 +137,8 @@ let NoteManager=(()=>{
 		for(let it in NoteList){
 			let note=NoteFactory(NoteList[it])
 			note.createNoteDiv();//建立div块
-				
+			NoteEntities[it]=note;
+			
 			//是否展开
 			if(NOTE_OPTION.VISIBLE_OPTIONS[0]=="show"){
 				note.show();
@@ -164,8 +168,9 @@ let NoteManager=(()=>{
 		
 		await SendMessage({op:OPERATION_CODE_NOTE.NEW_NOTE,noteObj:NoteList[uid],webObj:getWebObj()});//发送到background
 		
-		NoteFactory(NoteList[uid]).createNoteDiv();
-		
+		let entity=NoteFactory(NoteList[uid]);
+		entity.createNoteDiv();
+		NoteEntities[uid]=entity;
 	}
 	
 	//修改note
@@ -183,6 +188,7 @@ let NoteManager=(()=>{
 		if(NoteList[uid]){
 			await SendMessage({op:OPERATION_CODE_NOTE.REMOVE_NOTE,noteObj:NoteList[uid],webObj:getWebObj()});//发送到background
 			delete NoteList[uid];
+			delete NoteEntities[uid];
 		}
 	}
 	
@@ -195,8 +201,9 @@ let NoteManager=(()=>{
 		
 		await SendMessage({op:OPERATION_CODE_NOTE.NEW_NOTE,noteObj:NoteList[uid],webObj:getWebObj()});//发送到background
 		
-		NoteFactory(NoteList[uid]).createNoteDiv();
-		
+		let entity=NoteFactory(NoteList[uid]);
+		entity.createNoteDiv();
+		NoteEntities[uid]=entity;
 	}
 	
 	//滚动定位笔记
@@ -227,14 +234,7 @@ let NoteManager=(()=>{
 			console.log(pos);
 		}
 		
-		let targetDiv=document.querySelector('div[data-uid="'+uid+'"]');
-		targetDiv.oncontextmenu();
-		targetDiv.animate({
-			opacity: [ 0,1 ]
-		},{
-			duration: 500,
-			iterations: 4,
-		});
+		NoteEntities[uid].blink();
 	}
 	
 
@@ -256,7 +256,7 @@ function NoteFactory(noteObj){
 	
 	//笔记的div
 	let NoteParentDiv=null;//最外层的div
-	let HiddenDiv=[];//可以隐藏的div
+	let childDivs={};//子div
 	
 	
 	//----拖拽功能begin----
@@ -370,15 +370,17 @@ function NoteFactory(noteObj){
 	let visibleStatue=true;
 	//显示
 	function show(){
-		for(let i in HiddenDiv){
-			HiddenDiv[i].style.display="var(--basedisplay)";
+		for(let i in childDivs){
+			childDivs[i].style.display="var(--basedisplay)";
 		}
 		visibleStatue=true;
 	}
 	//隐藏
 	function hid(){
-		for(let i in HiddenDiv){
-			HiddenDiv[i].style.display="none";
+		for(let i in childDivs){
+			if(i!='hidBtn'){
+				childDivs[i].style.display="none";
+			}
 		}
 		visibleStatue=false;
 	}
@@ -418,7 +420,7 @@ function NoteFactory(noteObj){
 		NoteBody.innerHTML=noteObj["content"];
 		addEditFunc(NoteBody);//添加编辑功能
 		addWnumMonitor(NoteBody);//添加字数监测
-		HiddenDiv.push(NoteBody);
+		childDivs['NoteBody']=NoteBody;
 		NoteBody.dataset.wnum=NoteBody.innerText.length;
 		
 		NoteParentDiv.title=NoteBody.innerText;
@@ -428,7 +430,7 @@ function NoteFactory(noteObj){
 		hidBtn.classList.add('weshareNoteIcon');
 		hidBtn.innerHTML=NOTE_OPTION.ICON[0];
 		addChangeVisibleFunc(hidBtn);
-		
+		childDivs['hidBtn']=hidBtn;
 		
 		//删除图标
 		let delBtn=document.createElement('div');
@@ -436,7 +438,7 @@ function NoteFactory(noteObj){
 		delBtn.innerHTML="🗑️";
 		addDeleteFunc(delBtn);
 		delBtn.title="双击删除笔记";
-		HiddenDiv.push(delBtn);
+		childDivs['delBtn']=delBtn;
 		
 		//信息图标
 		let infBtn=document.createElement('div');
@@ -448,7 +450,7 @@ function NoteFactory(noteObj){
 			infs+="创建时间:"+tm.toLocaleString();
 		}
 		infBtn.title=infs;
-		HiddenDiv.push(infBtn);
+		childDivs['infBtn']=infBtn;
 		
 		//放入父div中
 		NoteParentDiv.appendChild(hidBtn);
@@ -458,6 +460,30 @@ function NoteFactory(noteObj){
 		
 		//父div放入body中
 		document.body.appendChild(NoteParentDiv);
+		
+		return NoteParentDiv;
+	}
+	
+	
+	//获取父div
+	function getParentDiv(){
+		return NoteParentDiv;
+	}
+	
+	//获取子divs
+	function getChildDivs(){
+		return childDivs;
+	}
+	
+	//闪烁
+	function blink(){
+		show();
+		NoteParentDiv.animate({
+			opacity: [ 0,1 ]
+		},{
+			duration: 500,
+			iterations: 4,
+		});
 	}
 	
 	
@@ -465,7 +491,10 @@ function NoteFactory(noteObj){
 		createNoteDiv:createNoteDiv,
 		changeVisible:changeVisible,
 		show:show,
-		hid:hid
+		hid:hid,
+		getParentDiv:getParentDiv,
+		getChildDivs:getChildDivs,
+		blink:blink
 	}
 }
 
@@ -473,7 +502,7 @@ function NoteFactory(noteObj){
 let PublicNoteManager=(()=>{
 	
 	let parentDiv;//父div
-	let HiddenDiv=[];//可以隐藏的div
+	let childDivs={};//子divs
 	let bodyDiv;//主体div
 	//该页面公开笔记
 	let publicNotes=[];
@@ -586,15 +615,17 @@ let PublicNoteManager=(()=>{
 	let visibleStatue=true;
 	//显示
 	function show(){
-		for(let i in HiddenDiv){
-			HiddenDiv[i].style.display="var(--basedisplay)";
+		for(let i in childDivs){
+			childDivs[i].style.display="var(--basedisplay)";
 		}
 		visibleStatue=true;
 	}
 	//隐藏
 	function hid(){
-		for(let i in HiddenDiv){
-			HiddenDiv[i].style.display="none";
+		for(let i in childDivs){
+			if(i!='hidBtn'){
+				childDivs[i].style.display="none";
+			}
 		}
 		visibleStatue=false;
 	}
@@ -662,7 +693,7 @@ let PublicNoteManager=(()=>{
 	//like按钮点击
 	async function likeBtnClick(){
 		if(!publicNotes[notesIndex]){
-				return;
+			return;
 		}
 		
 		let tg=publicNotes[notesIndex];
@@ -706,6 +737,7 @@ let PublicNoteManager=(()=>{
 		hidBtn.innerHTML="💬";
 		addChangeVisibleFunc(hidBtn);
 		parentDiv.appendChild(hidBtn);
+		childDivs['hidBtn']=hidBtn;
 		
 		//like栏
 		likeBtn=document.createElement('div');
@@ -713,7 +745,7 @@ let PublicNoteManager=(()=>{
 		likeBtn.classList.add('weshareDashedBorder');
 		likeBtn.innerHTML="🤍";
 		likeBtn.onclick=likeBtnClick;
-		HiddenDiv.push(likeBtn);
+		childDivs['likeBtn']=likeBtn;
 		parentDiv.appendChild(likeBtn);
 		
 		//信息图标
@@ -722,12 +754,12 @@ let PublicNoteManager=(()=>{
 		infDiv.classList.add('weshareDashedBorder');
 		infDiv.innerHTML="📅";
 		parentDiv.appendChild(infDiv);
-		HiddenDiv.push(infDiv);
+		childDivs['infDiv']=infDiv;
 		
 		//翻页栏
 		let pageline=document.createElement('div');
 		pageline.classList.add('weshareOpLine');
-		HiddenDiv.push(pageline);
+		childDivs['pageline']=pageline;
 		//下一条笔记
 		let nextd=document.createElement('a');
 		nextd.style.display="inline-block";
@@ -777,7 +809,7 @@ let PublicNoteManager=(()=>{
 		bodyDiv=document.createElement('div');
 		bodyDiv.classList.add('weshareNoteBody');
 		bodyDiv.classList.add('weshareDashedBorder');
-		HiddenDiv.push(bodyDiv);
+		childDivs['bodyDiv']=bodyDiv;
 		parentDiv.appendChild(bodyDiv);
 		
 		parentDiv.appendChild(pageline);
