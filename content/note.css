@@ -39,6 +39,7 @@
 	text-align:center;
 }
 
+
 /*笔记的可编辑区域*/
 .weshareNoteBody{
 	--basedisplay:block;
@@ -58,5 +59,44 @@
 	border-radius:0.6em;
 	color:var(--fontcolor);
 	
+	word-break: break-word;
+	white-space: pre-line;
+	
 	overflow:auto;
+}
+.weshareNoteBody::after{
+	display:block;
+	content:attr(data-wnum)'/800';
+	text-align:right;
+	opacity:0.6;
+}
+
+
+/*公开笔记相关*/
+.weshareDashedBorder{
+	border:0.1em dashed;
+	border-color:var(--bordercolor);
+}
+.weshareOpLine{
+	--basedisplay:block;
+	margin:0;
+	display:block;
+	font-size:var(--iconsize);
+	line-height:1.5em;
+	padding-left:0.5em;
+	padding-right:0.5em;
+	min-height:1.5em;
+	box-sizing:content-box;
+	border:0.1em dashed;
+	border-color:var(--bordercolor);
+	background-color:var(--bgcolor);
+	
+	border-radius:0.5em;
+	text-align:center;
+}
+.weshareOpLine a{
+	color:var(--fontcolor);
+}
+.weshareOpLine a:hover{
+	font-weight:bold;
 }

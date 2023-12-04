@@ -1,110 +1,31 @@
 
 body{
 	background-color:rgba(255,255,255,0);
+	font-size:14px;
+	width:25em;
+	display:flex;
+	justify-content:center;
 }
 
 .content{
-	min-height:50px;
-	max-height:400px;
-	width:240px;
-	text-align:center;
-	border-radius:50px;
+	display:block;
 }
 
-
-
-.NoteTable{
-	display:inline-block;
-	width:240px;
-	padding-bottom:20px;
-	text-align:center;
-	overflow-y:auto;
-	max-height:400px;
+.btnContent{
+	display:flex;
+	justify-content:center;
+	padding:0.3rem;
 }
 
-.blackBorder{
-	border-color:black;
-	border-width:2px;
-	border-style:solid;
-	text-align:center;
-	padding:10px;
+.btn{
+	display:block;
+	border-radius:1rem;
+	border:0.1rem solid black;
+	padding:0.1rem 0.5rem;
+	margin:0 0.5rem;
+	color:black;
 }
 
-.shortNote{
-	display:inline-block;
-	width:180px;
-	min-height:20px;
-	margin-top:5px;
-	margin-bottom:5px;
-	font-size:16px;
-	text-align:left;
-	padding-left:10px;
-	border-radius:10px;
-	background-color:rgba(255,255,255,0.7);
-}
-
-.shortNote:focus{
-	background-color:white;
-	
-}
-
-.menu{
-	width:180px;
-	text-align:center;
-	border-radius:10px;
-	display:inline-block;
-	font-size:16px;
-}
-
-.menuBT{
-	width:200px;
-	min-height:20px;
-	margin-top:5px;
-	margin-bottom:5px;
-	text-align:center;
-	border-radius:10px;
-	border-color:black;
-	border-width:2px;
-	border-style:solid;
-	display:inline-block;
-	padding-top:5px;
-	padding-bottom:5px;
-	font-size:18px;
-	font-family: Georgia, serif;
-	background-color:rgba(255,255,255,0.4);
-}
-
-.bt{
-	display:inline-block;
-	padding:5px 10px 5px 10px;
-	font-size:18px;
-}
-
-.bt:hover{
+.btn:hover{
 	color:blue;
-	text-decoration:underline;
-}
-
-.rightMenu{
-	position:fixed;
-	list-style-type: none;
-	border:2px solid black;
-	border-radius:5px;
-	margin: 0px;
-	padding-top:2px;
-	padding-bottom:2px;
-	padding-left:3px;
-	padding-right:3px;
-	text-align:left;
-	background-color:white;
-	font-size:16px;
-}
-
-.rightMenu li:hover{
-	text-decoration:underline;
-	color:blue;
-}
-
-#homepage{
-	display:inline-block;
 }

@@ -3,14 +3,21 @@
 <head>
 <meta charset="utf-8">
 <link rel="stylesheet" type="text/css" href="popup.css">
-<title>easylog</title>
+<title>weshare</title>
 </head>
 <body>
-<div id="content" class="content">
-	<div>当前账户:<div id="account">无</div></div>
-	<input id="addnote" type="button" value="添加笔记">
-	<input id="setting" type="button" value="插件设置">
-	<p>*若记有笔记的页面未显示笔记,请稍等几秒后刷新</p>
+<div class="content">
+	<div id="account"></div>
+	<div class="btnContent">
+			<div id="addnote" class="btn" title="在当前页面添加笔记">添加笔记</div>
+			<div id="publicNote" class="btn" title="开启/关闭当前页面的公开笔记浏览框">公开笔记</div>
+			<div id="setting" class="btn" title="插件设置">插件设置</div>
+	</div>
+	<div class='btnContent'>
+		<div id="locnote" class="btn" title="依次自动滑动到该网页的笔记位置">定位笔记</div>
+		<div id="sidebar" class="btn" title="侧边栏开启">侧边管理</div>
+	</div>
+	<div>*若记有笔记的页面未显示笔记,请稍等几秒后刷新</div>
 </div>
 
 <script src="popup.js"></script>
