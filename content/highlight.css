@@ -1,0 +1,5 @@
+.highlight{
+	--hlcolor:pink;
+	display:inline;
+	background-color:var(--hlcolor);
+}

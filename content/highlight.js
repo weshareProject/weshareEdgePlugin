@@ -1,20 +1,21 @@
 
 //获取所有节点
-let allNode={
-	nodes:[],
+let allNode=(()=>{
+	
+	let nodes=[];//存储所有节点
+	
 	//获取所有节点
-	getAllNodes:function(){
-		let res = [];
+	function getAllNodes(){
+		nodes = [];
 		let walker=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT);
 		for(;walker.nextNode();){
-			res.push(walker.currentNode);
+			nodes.push(walker.currentNode);
 		}
-		allNode.nodes=res;
-	},
+	}
+	
 	//寻找特点节点在所有节点中的index
-	findIndex:function(node){
+	function findIndex(node){
 		let res = -1;
-		let nodes=allNode.nodes;
 		for(let i=0;i<nodes.length;i++){
 			if(nodes[i]==node){
 				res=i;
@@ -22,140 +23,224 @@ let allNode={
 			}
 		}
 		return res;
-	},
+	}
+	
+	//根据index确认节点
+	function getNodeByIndex(index){
+		return nodes[index];
+	}
+	
+	//返回范围内的textNode节点
+	function getTextNodeByFragment(fragment){
+		let res=[];
+		let childNodes=fragment.childNodes;
+		for(let i=0;i<childNodes.length;i++){
+			let nownode=childNodes[i];
+			if(!nownode){
+				continue;
+			}
+			if(nownode.nodeType==Node.TEXT_NODE){
+				res.push(nownode);
+			}else{
+				let txtnodes=getTextNodeByFragment(nownode);
+				if(txtnodes.length>0){
+					for(let j=0;j<txtnodes.length;j++){
+						res.push(txtnodes[j]);
+					}
+				}
+			}
+		}
+		return res;
+	}
+	
 	//初始化
-	init:function(){
+	function init(){
 		allNode.getAllNodes();
 	}
-};
+	
+	return {
+		init:init,
+		getAllNodes:getAllNodes,
+		findIndex:findIndex,
+		getNodeByIndex:getNodeByIndex,
+		getTextNodeByFragment:getTextNodeByFragment
+		
+	}
+})();
 allNode.init();
 
-let Highlight={
-	//标记颜色
-	color:"yellow",
-	highlights:{},
-	//初始化
-	init:function(){
-		Highlight.load.auto();
-	},
-	//生成高亮uid
-	makeUid:function(){
-		return Date.now();
-	},
-	//保存
-	save:{
-		//本地
-		local:function(){
-			console.log(Highlight.highlights);
-			console.log(JSON.stringify(Highlight.highlights));
-			localStorage.setItem("weshareHighlight-"+window.location.pathname,JSON.stringify(Highlight.highlights));
-			localStorage.setItem("weshareHighlight-LastSave",Date.now());
-		},
-		//云端
-		cloud:function(){
-			//TODO
-				
-		},
-		//自动判断
-		auto:function(){
-			Highlight.save.local();
-		}
-	},
+function Highlight(uid,range){
+	//内容
+	let content=null;
+	//包含的节点
+	let nodes=[];
+	//是否成功
+	let success=false;
+	//颜色
+	let hlcolor='yellow';
 	
-	//载入
-	load:{
-		//本地
-		local:function(){
-			let hl=localStorage.getItem("weshareHighlight-"+window.location.pathname);
-			if(hl)Highlight.highlights=JSON.parse(hl);
+	//range相关
+	let startContainer=null;
+	let startOffset=null;
+	let endContainer=null;
+	let endOffset=null;
+	let startContainerIndex=null;
+	let endContainerIndex=null;
 		
-			console.log(Highlight.highlights);
-			let hls=Highlight.highlights;
-			for(let h in hls){
-				let id=h;
-				let startContainerIndex=hls[h]['startContainerIndex'];
-				let endContainerIndex=hls[h]['endContainerIndex'];
-				let startOffset=hls[h]['startOffset'];
-				let endOffset=hls[h]['endOffset'];
-				let range=new Range();
-				
-				range.setStart(allNode.nodes[startContainerIndex],startOffset);
-				range.setEnd(allNode.nodes[endContainerIndex],endOffset);
-				
-				Highlight.dohighlight(id,range);
-			}
-			
-		},
-		//云端
-		cloud:function(){
-			//TODO
-		},
-		//自动判断
-		auto:function(){
-			Highlight.load.local();
+	//高亮范围
+	function highlight(range){
+		console.log(range);
+		if(!range){
+			alert('选区获取失败');
+			success=false;
+			return;
 		}
-	},
-	//判断结点是否相等
-	makeFilter:function(node1){
-		return function(node2){
-			return (node1==node2);
+		
+		if(startContainerIndex<0||endContainerIndex<0){
+			alert('选区获取失败');
+			success=false;
+			return;
 		}
-	},
-	//高亮处理函数
-	highlight:async function(){
-		let range=null;
-		const sel=window.getSelection();
 		
-		if(sel.rangeCount&&sel.getRangeAt){
-			range=sel.getRangeAt(0);
-			sel.removeAllRanges();
-			sel.addRange(range);
-			
-			let startContainer=range.startContainer;
-			let startOffset=range.startOffset;
-			let endContainer=range.endContainer;
-			let endOffset=range.endOffset;
-			
-			let id=Highlight.makeUid();
-			
-			let startContainerIndex=allNode.findIndex(startContainer);
-			let endContainerIndex=allNode.findIndex(endContainer);
+		content=range.toString();
 		
-			let position={'startContainerIndex':startContainerIndex,'endContainerIndex':endContainerIndex,'startOffset':startOffset,'endOffset':endOffset};
-			console.log(position);
-			console.log(JSON.stringify(position));
-			Highlight.highlights[id]=position;
-			Highlight.save.auto();
-			Highlight.dohighlight(id,range);
+		let fragment=range.extractContents();
+		let textnodes=allNode.getTextNodeByFragment(fragment);
+		
+		if(textnodes.length<=0){
+			range.insertNode(fragment);
+			alert('选区内无可高亮文字');
+			success=false;
+			return;
 		}
-	},
-	//对给定range高亮
-	dohighlight(id,range){
-		let color=Highlight.color;
-		let spannode=document.createElement("span");
-		spannode.id=id;
-		spannode.style.backgroundColor=color;
-		spannode.style.display="inline";
-		spannode.appendChild(range.extractContents());
 		
-		spannode.addEventListener("dblclick",()=>{Highlight.removehighlight(spannode);});
+		success=true;
+		for(let i=0;i<textnodes.length;i++){
+			handlenode=textnodes[i];
+			
+			let hlnode=document.createElement('div');
+			hlnode.classList.add('highlight');
+			hlnode.style.setProperty('--hlcolor',hlcolor);
+			hlnode.dataset.uid=uid;
+			hlnode.appendChild(handlenode.cloneNode());
+			
+			handlenode.parentNode.replaceChild(hlnode,handlenode);
+			nodes.push(hlnode);
 		
-		range.insertNode(spannode);
-	},
-	//去除高亮
-	removehighlight(node){
+			hlnode.addEventListener('dblclick',()=>{
+				removeHighlight();
+			});
+		}
 		
-		let id=node.id;
-		delete Highlight.highlights[id];
-		Highlight.save.auto();
-		let ib=document.createTextNode(node.textContent);
+		range.insertNode(fragment);
 		
-		node.parentNode.insertBefore(ib,node);
-		node.parentNode.removeChild(node);
 	}
-};
+	
+	//移除高亮
+	function removeHighlight(){
+		for(let i=0;i<nodes.length;i++){
+			let nownode=nodes[i];
+			let cnode=nownode.firstChild;
+			let parNode=nownode.parentNode;
+			parNode.replaceChild(cnode,nownode);
+			parNode.normalize();
+		}
+		notes=[];
+	}
+	
+	//获取obj
+	function getObj(){
+		if(!success){
+			return null;
+		}
+		
+		let position={'startContainerIndex':startContainerIndex,'endContainerIndex':endContainerIndex,'startOffset':startOffset,'endOffset':endOffset};
 
-Highlight.init();
+		return {uid:uid,position:position,content:content};
+	}
+	
+	//设置range
+	function setRange(position){
+		if(!position.startContainerIndex||!position.endContainerIndex||!position.startOffset||!position.endOffset){
+			return;
+		}
+		
+		startContainerIndex=position.startContainerIndex;
+		startOffset=range.startOffset;
+		endContainerIndex=range.endContainerIndex;
+		endOffset=range.endOffset;
+		
+		startContainer=allNode.getNodeByIndex(startContainerIndex);
+		endContainer=allNode.getNodeByIndex(endContainerIndex);
+		
+		if(startContainer&&endContainer){
+			range=new Range();
+			range.setStart(startContainer,startOffset);
+			range.setEnd(endContainer,endOffset);
+		}	
+	}
+	
+	//设置颜色
+	function setHLcolor(color){
+		hlcolor=color;
+		for(let i=0;i<nodes.length;i++){
+			hlnode=textnodes[i];
+			hlnode.style.setProperty('--hlcolor',hlcolor);
+		}
+		
+	}
+	
+	
+	//滚动至位置
+	function scrollToNote(){
+		let rect=range.getBoundingClientRect();
+		let left_=react.x;
+		let top_=react.y;
+		
+		let ht=document.documentElement.clientHeight || document.body.clientHeight;
+		window.scrollTo({left:left_,top:top_-ht/4,behavior:'smooth'});
+	}
+	
+	//闪烁
+	function blink(){
+		for(let i=0;i<notes.length;i++){
+			let nownode=notes[i];
+			nownode.animate({
+				opacity: [ 0,1 ]
+			},{
+				duration: 500,
+				iterations: 4,
+			});
+		}
+	}
+	
+	
+	//初始化
+	function init(){
+		if(range){
+			startContainer=range.startContainer;
+			startOffset=range.startOffset;
+			endContainer=range.endContainer;
+			endOffset=range.endOffset;
+			
+			startContainerIndex=allNode.findIndex(startContainer);
+			endContainerIndex=allNode.findIndex(endContainer);
+			
+			console.log(startContainerIndex+"  "+endContainerIndex);
+		}
+		highlight(range);
+	}
+	
+	return {
+		init:init,
+		highlight:highlight,
+		getObj:getObj,
+		setRange:setRange,
+		removeHighlight:removeHighlight,
+		blink:blink,
+		scrollToNote:scrollToNote
+	}
+}
 
 
 

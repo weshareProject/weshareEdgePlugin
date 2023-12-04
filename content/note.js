@@ -93,6 +93,9 @@ let NoteManager=(()=>{
 	//笔记div实体维护
 	let NoteEntities={};
 	
+	//高亮实体维护
+	let HighlightEntities={};
+	
 	//发信息
 	async function SendMessage(messageObj){
 		await chrome.runtime.sendMessage({op:OPERATION_CODE_NOTE.NO_ACTION});
@@ -225,18 +228,28 @@ let NoteManager=(()=>{
 		let uid=noteKeys[locateIndex];
 		let noteObj=NoteList[uid];
 		
-		let pos=noteObj.position;
-		if(pos&&pos.top&&pos.left){
-			let top_=parseInt(pos.top);
-			let left_=parseInt(pos.left);
-			let ht=document.documentElement.clientHeight || document.body.clientHeight;
-			window.scrollTo({left:left_,top:top_-ht/4,behavior:'smooth'});
-			console.log(pos);
-		}
 		
+		NoteEntities[uid].scrollToNote();
 		NoteEntities[uid].blink();
 	}
 	
+	//高亮
+	function highlight(){
+		let sel=window.getSelection();
+		if(sel.rangeCount&&sel.getRangeAt){
+			range=sel.getRangeAt(0);
+			sel.removeAllRanges();
+			sel.addRange(range);
+			if(!range.collapsed){
+				let uid=createUID();
+				let newHighlight=Highlight(uid,range);
+				newHighlight.init();
+				let hlObj=newHighlight.getObj();
+				console.log(hlObj);
+				HighlightEntities[uid]=newHighlight;
+			}
+		}
+	}
 
 	return {
 		init:init,
@@ -245,7 +258,8 @@ let NoteManager=(()=>{
 		setNote:setNote,
 		removeNote:removeNote,
 		cloneNote:cloneNote,
-		locateNote:locateNote
+		locateNote:locateNote,
+		highlight:highlight
 	}
 	
 })();
@@ -486,6 +500,11 @@ function NoteFactory(noteObj){
 		});
 	}
 	
+	//滚动到笔记位置
+	function scrollToNote(){
+		let ht=document.documentElement.clientHeight || document.body.clientHeight;
+		window.scrollTo({left:NoteParentDiv.offsetLeft,top:NoteParentDiv.offsetTop-ht/4,behavior:'smooth'});
+	}
 	
 	return {
 		createNoteDiv:createNoteDiv,
@@ -494,7 +513,8 @@ function NoteFactory(noteObj){
 		hid:hid,
 		getParentDiv:getParentDiv,
 		getChildDivs:getChildDivs,
-		blink:blink
+		blink:blink,
+		scrollToNote:scrollToNote
 	}
 }
 
@@ -574,7 +594,7 @@ let PublicNoteManager=(()=>{
 		
 		
 		let pos=noteObj.position;
-		if(pos){
+		if(pos&&pos.top){
 			let top_=pos.top;
 			let left=pos.left;
 			parentDiv.style.top=top_;

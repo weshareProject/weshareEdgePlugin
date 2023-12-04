@@ -325,20 +325,6 @@ let CloudServerManager=(()=>{
 		await Storage.set({"waitUploadNotes":JSON.stringify(waitUploadNotes)});
 	}
 	
-	//获取指定url界面所有public笔记
-	async function getPublicNote(url){
-		//TODO
-		console.log('getPublicNote');
-		let tp=await AllNoteManager.loadNote(url);
-		if(!tp)tp={};
-		let res=[];
-		for(let i in tp){
-			res.push(tp[i]);
-		}
-		return res;
-	}
-	
-	
 	//用户信息
 	//{userName:用户名,pass:密码,token:token，expirationTime:token过期时间点}
 	let user={userName:null,pass:null,token:null,expirationTime:null};
@@ -591,7 +577,20 @@ let CloudServerManager=(()=>{
 		return ret;
 	}
 	
-	
+	//获取指定url界面所有public笔记
+	async function getPublicNote(url){
+		//TODO
+		console.log('getPublicNote');
+		let tp=await AllNoteManager.loadNote(url);
+		if(!tp){
+			tp={};
+		}
+		let res=[];
+		for(let i in tp){
+			res.push(tp[i]);
+		}
+		return res;
+	}
 
 	//初始化
 	async function init(){
