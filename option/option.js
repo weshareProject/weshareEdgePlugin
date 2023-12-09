@@ -120,7 +120,7 @@ function sizeBtnFactory(btnObj){
 	btn.innerHTML=showval;
 	async function checked(){
 		let btns=$(attr).querySelectorAll('.setBtn');
-		console.log(btns);
+		
 		for(let i=0;i<btns.length;i++){
 			btns[i].style.borderColor="var(--unchecked)";
 			btns[i].style.color="var(--unchecked)";

@@ -69,8 +69,6 @@ const OPERATION_CODE_NOTE={
 
 //NoteManager负责所有Note的载入和管理
 let NoteManager=(()=>{
-	//记录本页面所有note
-	let NoteList={};
 	/*
 	笔记基本格式:	
 	{uid:{
@@ -89,12 +87,10 @@ let NoteManager=(()=>{
 		createtime:创建时间
 	}...};
 	*/
+	//记录本页所有笔记的NoteList弃用,改为NoteEntities维护
 	
 	//笔记div实体维护
 	let NoteEntities={};
-	
-	//高亮实体维护
-	let HighlightEntities={};
 	
 	//发信息
 	async function SendMessage(messageObj){
@@ -133,6 +129,7 @@ let NoteManager=(()=>{
 	//载入数据
 	async function loadNote(){
 		
+		let NoteList={};
 		let nt=await SendMessage({op:OPERATION_CODE_NOTE.LOAD_NOTE,url:getWebUrl()});
 		if(nt)NoteList=nt;
 		
@@ -166,12 +163,11 @@ let NoteManager=(()=>{
 		let content="weshareNote";
 		let top_=Number(scrollTop)+Number(po.y)+"px";
 		let left=Number(scrollLeft)+Number(po.x)+"px";
-		let noteob={"uid":uid,"content":content,"position":{"top":top_,"left":left},"permission":"private","ownerId":"000000000000","ownerName":"me","url":getWebUrl(),"webtitle":document.title,"createtime":Date.now()};
-		NoteList[uid]=noteob;
+		let noteObj={"uid":uid,"content":content,"position":{"top":top_,"left":left},"permission":"private","ownerId":"000000000000","ownerName":"me","url":getWebUrl(),"webtitle":document.title,"createtime":Date.now()};
 		
-		await SendMessage({op:OPERATION_CODE_NOTE.NEW_NOTE,noteObj:NoteList[uid],webObj:getWebObj()});//发送到background
+		await SendMessage({op:OPERATION_CODE_NOTE.NEW_NOTE,noteObj:noteObj,webObj:getWebObj()});//发送到background
 		
-		let entity=NoteFactory(NoteList[uid]);
+		let entity=NoteFactory(noteObj);
 		entity.createNoteDiv();
 		NoteEntities[uid]=entity;
 	}
@@ -180,17 +176,16 @@ let NoteManager=(()=>{
 	async function setNote(noteObj){
 		let uid=noteObj["uid"];
 		if(uid){
-			NoteList[uid]=noteObj;
-			await SendMessage({op:OPERATION_CODE_NOTE.SET_NOTE,noteObj:NoteList[uid],webObj:getWebObj()});//发送到background
+			NoteEntities[uid]=noteObj;
+			await SendMessage({op:OPERATION_CODE_NOTE.SET_NOTE,noteObj:noteObj,webObj:getWebObj()});//发送到background
 		}
 	}
 	
 	//删除note
 	async function removeNote(noteObj){
 		let uid=noteObj["uid"];
-		if(NoteList[uid]){
-			await SendMessage({op:OPERATION_CODE_NOTE.REMOVE_NOTE,noteObj:NoteList[uid],webObj:getWebObj()});//发送到background
-			delete NoteList[uid];
+		if(NoteEntities[uid]){
+			await SendMessage({op:OPERATION_CODE_NOTE.REMOVE_NOTE,noteObj:noteObj,webObj:getWebObj()});//发送到background
 			delete NoteEntities[uid];
 		}
 	}
@@ -200,11 +195,10 @@ let NoteManager=(()=>{
 		let uid=createUID();
 		
 		let noteob={"uid":uid,"content":noteObj.content,"position":noteObj.position,"permission":"private","ownerId":"000000000000","ownerName":"me","url":getWebUrl(),"webtitle":document.title,"createtime":Date.now()};
-		NoteList[uid]=noteob;
 		
-		await SendMessage({op:OPERATION_CODE_NOTE.NEW_NOTE,noteObj:NoteList[uid],webObj:getWebObj()});//发送到background
+		await SendMessage({op:OPERATION_CODE_NOTE.NEW_NOTE,noteObj:noteObj,webObj:getWebObj()});//发送到background
 		
-		let entity=NoteFactory(NoteList[uid]);
+		let entity=NoteFactory(noteObj);
 		entity.createNoteDiv();
 		NoteEntities[uid]=entity;
 	}
@@ -212,7 +206,7 @@ let NoteManager=(()=>{
 	//滚动定位笔记
 	let locateIndex=-1;
 	function locateNote(){
-		let noteKeys=Object.keys(NoteList);
+		let noteKeys=Object.keys(NoteEntities);
 		if(noteKeys.length<=0){
 			alert('本页面无笔记');
 			return;
@@ -226,30 +220,11 @@ let NoteManager=(()=>{
 		}
 		if(locateIndex>=noteKeys.length)locateIndex=0;
 		let uid=noteKeys[locateIndex];
-		let noteObj=NoteList[uid];
-		
 		
 		NoteEntities[uid].scrollToNote();
 		NoteEntities[uid].blink();
 	}
 	
-	//高亮
-	function highlight(){
-		let sel=window.getSelection();
-		if(sel.rangeCount&&sel.getRangeAt){
-			range=sel.getRangeAt(0);
-			sel.empty();
-			if(!range.collapsed){
-				let uid=createUID();
-				let newHighlight=Highlight(uid,range);
-				newHighlight.init();
-				let hlObj=newHighlight.getObj();
-				console.log(hlObj);
-				HighlightEntities[uid]=newHighlight;
-			}
-		}
-	}
-
 	return {
 		init:init,
 		loadNote:loadNote,
@@ -257,8 +232,7 @@ let NoteManager=(()=>{
 		setNote:setNote,
 		removeNote:removeNote,
 		cloneNote:cloneNote,
-		locateNote:locateNote,
-		highlight:highlight
+		locateNote:locateNote
 	}
 	
 })();

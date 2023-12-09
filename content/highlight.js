@@ -7,13 +7,16 @@ let NodeProcessor=(()=>{
 	//获取所有节点
 	function getAllNodes(){
 		nodes = [];
+		
 		/*
 		let walker=document.createTreeWalker(document.body);
 		for(;walker.nextNode();){
 			nodes.push(walker.currentNode);
 		}
 		*/
-		nodes=document.body.querySelectorAll('*');
+		
+		nodes=document.querySelectorAll('*');
+		
 	}
 	
 	//寻找特点节点在所有节点中的index
@@ -33,8 +36,8 @@ let NodeProcessor=(()=>{
 		return nodes[index];
 	}
 	
-	//返回范围内的textNode节点
-	function getTextNodeByFragment(fragment){
+	//返回范围内的type类型节点
+	function getNodeByFragment(fragment,type,isRecursed=false){
 		let res=[];
 		
 		let childNodes=fragment.childNodes;
@@ -43,9 +46,10 @@ let NodeProcessor=(()=>{
 			if(!nownode){
 				continue;
 			}
-			if(nownode.nodeType==Node.TEXT_NODE){
+			if(nownode.nodeType==type){
 				res.push(nownode);
-			}else{
+				console.log(nownode.nodeValue);
+			}else if(isRecursed){
 				let txtnodes=getTextNodeByFragment(nownode);//递归获取子节点
 				if(txtnodes.length>0){
 					for(let j=0;j<txtnodes.length;j++){
@@ -55,6 +59,25 @@ let NodeProcessor=(()=>{
 				}
 			}
 		}
+		return res;
+	}
+	
+	
+	//获取startIndex至endIndex间类型为type的node
+	function getNodeByType(startIndex,endIndex,type){
+		let res=[];
+		
+		for(let i=startIndex;i<=endIndex;i++){
+			let node=getNodeByIndex(i);
+			let tres=getNodeByFragment(node,Node.TEXT_NODE);
+			if(tres.length>0){
+				tres.forEach((item)=>{
+					res.push(item);
+				});
+			}
+		}
+		
+
 		return res;
 	}
 	
@@ -69,13 +92,16 @@ let NodeProcessor=(()=>{
 		getAllNodes:getAllNodes,
 		findIndex:findIndex,
 		getNodeByIndex:getNodeByIndex,
-		getTextNodeByFragment:getTextNodeByFragment
+		getNodeByFragment:getNodeByFragment,
+		getNodeByType:getNodeByType
 		
 	}
 })();
 NodeProcessor.init();
 
-function Highlight(uid,range){
+
+//高亮工厂
+function HighlightFactory(uid,range){
 	//内容
 	let content=null;
 	//包含的节点
@@ -110,18 +136,16 @@ function Highlight(uid,range){
 		}
 		
 		
-		let fragment=range.extractContents();
-		let textnodes=NodeProcessor.getTextNodeByFragment(fragment);
+		let textnodes=NodeProcessor.getNodeByType(startContainerIndex,endContainerIndex,Node.TEXT_NODE);
 		
 		if(textnodes.length<=0){
-			range.insertNode(fragment);
 			alert('选区内无可高亮文字');
 			success=false;
 			return;
 		}
 		
 		
-		if(startContainer===endContainer&&endOffset<=textnodes[0].nodeValue.length){
+		if(textnodes.length==1){
 			let tsplt=textnodes[0].splitText(startOffset);
 			console.log(tsplt);
 			tsplt=tsplt.splitText(endOffset-startOffset);
@@ -189,7 +213,6 @@ function Highlight(uid,range){
 			});
 		}
 		
-		range.insertNode(fragment);
 		success=true;
 	}
 	
@@ -291,8 +314,14 @@ function Highlight(uid,range){
 			endContainerIndex=NodeProcessor.findIndex(endContainer);
 			
 			console.log({'startContainerIndex':startContainerIndex,'endContainerIndex':endContainerIndex,'startOffset':startOffset,'endOffset':endOffset});
+			
+			highlight(range);
 		}
-		highlight(range);
+	}
+	
+	//是否成功 
+	function getSuccess(){
+		return success;
 	}
 	
 	return {
@@ -302,12 +331,43 @@ function Highlight(uid,range){
 		setRange:setRange,
 		removeHighlight:removeHighlight,
 		blink:blink,
-		scrollToNote:scrollToNote
+		scrollToNote:scrollToNote,
+		getSuccess:getSuccess
 	}
 }
 
-
-
+//高亮管理员
+let HighlightManager=(()=>{
+	
+	//高亮实体
+	let HighlightEntities={};
+	
+	
+	//高亮
+	function highlight(){
+		let sel=window.getSelection();
+		if(sel.rangeCount&&sel.getRangeAt){
+			range=sel.getRangeAt(0);
+			sel.empty();
+			if(!range.collapsed){
+				let uid=createUID();
+				let newHighlight=Highlight(uid,range);
+				newHighlight.init();
+				let hlObj=newHighlight.getObj();
+				console.log(hlObj);
+				HighlightEntities[uid]=newHighlight;
+			}
+		}
+	}
+	
+	
+	
+	
+	return {
+		highlight:highlight
+	}
+	
+})();
 
 
 
