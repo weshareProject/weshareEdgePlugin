@@ -5,7 +5,7 @@ let NodeProcessor=(()=>{
 	let nodes=[];//存储所有节点
 	
 	//获取所有节点
-	function getAllNodes(){
+	async function getAllNodes(){
 		nodes = [];
 		
 		/*
@@ -15,8 +15,7 @@ let NodeProcessor=(()=>{
 		}
 		*/
 		
-		nodes=document.querySelectorAll('*');
-		
+		nodes=await document.querySelectorAll('*');
 	}
 	
 	//寻找特点节点在所有节点中的index
@@ -82,9 +81,9 @@ let NodeProcessor=(()=>{
 	}
 	
 	//初始化
-	function init(){
+	async function init(){
 		document.body.normalize();
-		NodeProcessor.getAllNodes();
+		await NodeProcessor.getAllNodes();
 	}
 	
 	return {
@@ -97,7 +96,108 @@ let NodeProcessor=(()=>{
 		
 	}
 })();
-NodeProcessor.init();
+
+
+
+//高亮管理员
+let HighlightManager=(()=>{
+	
+	//高亮实体
+	let HighlightEntities={};
+	
+	//生成uid
+	function createUID(){
+		let prefix="temp";
+		let timestamp=Date.now();//时间戳
+		let postfix=(()=>{
+			return Math.random().toString(36).slice(-8) || "nufix";//随机后缀
+		})();
+		let uid=prefix+timestamp.toString(36)+postfix;
+		return uid;
+	}
+	
+	//new
+	function newHighlight(){
+		let sel=window.getSelection();
+		if(sel.rangeCount&&sel.getRangeAt){
+			range=sel.getRangeAt(0);
+			sel.empty();
+			if(!range.collapsed){
+				let uid=createUID();
+				let newHighlight=HighlightFactory(uid,range);
+				newHighlight.init();
+				let hlObj=newHighlight.getObj();
+				console.log(hlObj);
+				if(hlObj){
+					HighlightEntities[uid]=newHighlight;
+					save();
+				}
+			}
+		}
+	}
+	
+	//remove
+	function removeHighlight(uid){
+		if(HighlightEntities[uid]){
+			delete HighlightEntities[uid];
+		}
+		save();
+	}
+	
+	//save
+	function save(){
+		let hls={};
+		for(let i in HighlightEntities){
+			let item=HighlightEntities[i];
+			let hlObj=item.getObj();
+			let uid=hlObj.uid;
+			hls[uid]=hlObj;
+		}
+		console.log(hls);
+		localStorage.setItem('weshareHighlight-'+window.location.pathname,JSON.stringify(hls));
+		
+	}
+	
+	//load
+	function load(){
+		let hls={};
+		let tp=localStorage.getItem(('weshareHighlight-'+window.location.pathname));
+		if(tp){
+			hls=JSON.parse(tp);
+		}
+		console.log(hls);
+		
+		for(let i in hls){
+			let item=hls[i];
+			let hl=HighlightFactory(i,new Range());
+			hl.setRange(item.position);
+			hl.highlight();
+		}
+	}
+	
+	//init
+	function init(){
+		load();
+	}
+	
+	
+	
+	return {
+		init:init,
+		newHighlight:newHighlight,
+		removeHighlight:removeHighlight,
+		load:load,
+		save:save
+	}
+	
+})();
+
+
+(async ()=>{
+	await NodeProcessor.init();
+	HighlightManager.init();
+})();
+
 
 
 //高亮工厂
@@ -120,15 +220,8 @@ function HighlightFactory(uid,range){
 	let endContainerIndex=null;
 		
 	//高亮范围
-	function highlight(range){
-		console.log(range);
-		
-		if(!range){
-			alert('选区获取失败');
-			success=false;
-			return;
-		}
-		
+	function highlight(){
+	
 		if(startContainerIndex<0||endContainerIndex<0){
 			alert('选区获取失败');
 			success=false;
@@ -143,7 +236,6 @@ function HighlightFactory(uid,range){
 			success=false;
 			return;
 		}
-		
 		
 		if(textnodes.length==1){
 			let tsplt=textnodes[0].splitText(startOffset);
@@ -226,6 +318,7 @@ function HighlightFactory(uid,range){
 			parNode.normalize();
 		}
 		notes=[];
+		HighlightManager.removeHighlight(uid);
 	}
 	
 	//获取obj
@@ -319,11 +412,6 @@ function HighlightFactory(uid,range){
 		}
 	}
 	
-	//是否成功 
-	function getSuccess(){
-		return success;
-	}
-	
 	return {
 		init:init,
 		highlight:highlight,
@@ -331,43 +419,11 @@ function HighlightFactory(uid,range){
 		setRange:setRange,
 		removeHighlight:removeHighlight,
 		blink:blink,
-		scrollToNote:scrollToNote,
-		getSuccess:getSuccess
+		scrollToNote:scrollToNote
 	}
 }
 
-//高亮管理员
-let HighlightManager=(()=>{
-	
-	//高亮实体
-	let HighlightEntities={};
-	
-	
-	//高亮
-	function highlight(){
-		let sel=window.getSelection();
-		if(sel.rangeCount&&sel.getRangeAt){
-			range=sel.getRangeAt(0);
-			sel.empty();
-			if(!range.collapsed){
-				let uid=createUID();
-				let newHighlight=Highlight(uid,range);
-				newHighlight.init();
-				let hlObj=newHighlight.getObj();
-				console.log(hlObj);
-				HighlightEntities[uid]=newHighlight;
-			}
-		}
-	}
-	
-	
-	
-	
-	return {
-		highlight:highlight
-	}
-	
-})();
+
 
 
 
