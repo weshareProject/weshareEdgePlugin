@@ -34,8 +34,8 @@
   "content_scripts": [
    {
      "matches": ["<all_urls>"],
-     "js": ["content/highlight.js","content/note.js","content/message.js"],
-	 "css":["content/highlight.css","content/note.css"]
+     "js": ["content/note.js","content/highlight.js","content/message.js"],
+	 "css":["content/note.css","content/highlight.css"]
    }
   ],
   "options_page":"option/option.html",

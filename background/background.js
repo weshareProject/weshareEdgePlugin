@@ -7,11 +7,13 @@ chrome.runtime.onInstalled.addListener(()=>{
 		id:"weshareAddnote"
 	});
 	
+	/*
 	chrome.contextMenus.create({
 		title:"高亮标记",
 		contexts:["selection"],
 		id:"weshareHighlight"
 	});
+	*/
 	
 });
 

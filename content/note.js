@@ -237,7 +237,8 @@ let NoteManager=(()=>{
 		cloneNote:cloneNote,
 		locateNote:locateNote,
 		SendMessage:SendMessage,
-		createUID:createUID
+		createUID:createUID,
+		getWebObj:getWebObj
 	}
 	
 })();

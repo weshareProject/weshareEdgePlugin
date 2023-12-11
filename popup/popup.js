@@ -43,7 +43,6 @@ $('sidebar').addEventListener('click',()=>{
 	(async ()=>{
 		let tab=await getCurrentTab();
 		if(chrome.sidePanel && tab[0]){
-			console.log('open sidebar');
 			chrome.sidePanel.open({tabId:tab[0].id});
 		}
 	})();
@@ -54,13 +53,21 @@ $('locnote').addEventListener('click',()=>{
 	(async ()=>{
 		let tab=await getCurrentTab();
 		if(tab[0]){
-			console.log('open sidebar');
 			chrome.tabs.sendMessage(tab[0].id,{op:"locateNote"});
 		}
 	})();
 });
 
 
+//添加高亮
+$('highlight').addEventListener('click',()=>{
+	(async ()=>{
+		let tab=await getCurrentTab();
+		if(tab[0]){
+			chrome.tabs.sendMessage(tab[0].id,{op:"highlight"});
+		}
+	})();
+});
 
 
 //账户显示

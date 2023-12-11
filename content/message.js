@@ -20,7 +20,7 @@ let MessagerHandler=(()=>{
 	
 	//高亮
 	handlers['highlight']=function(message){
-		HighlightManager.newHighlight();
+		Highlight();
 	};
 	
 	//公开笔记
