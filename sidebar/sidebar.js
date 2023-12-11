@@ -5,8 +5,7 @@ async function SendMessage(messageObj){
 	return res;
 }
 
-(async ()=>{
+window.onload=async()=>{
 	let ret=await SendMessage({op:905});
-	document.getElementById('test').innerHTML=JSON.stringify(ret);
-	
-})();
+	document.getElementById('myframe').contentWindow.postMessage(JSON.stringify(ret),"*");
+};
