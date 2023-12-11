@@ -176,7 +176,6 @@ let NoteManager=(()=>{
 	async function setNote(noteObj){
 		let uid=noteObj["uid"];
 		if(uid){
-			NoteEntities[uid]=noteObj;
 			await SendMessage({op:OPERATION_CODE_NOTE.SET_NOTE,noteObj:noteObj,webObj:getWebObj()});//发送到background
 		}
 	}
@@ -212,7 +211,6 @@ let NoteManager=(()=>{
 			return;
 		}
 		
-		
 		if(locateIndex<0){
 			locateIndex=0
 		}else{
@@ -221,8 +219,13 @@ let NoteManager=(()=>{
 		if(locateIndex>=noteKeys.length)locateIndex=0;
 		let uid=noteKeys[locateIndex];
 		
-		NoteEntities[uid].scrollToNote();
-		NoteEntities[uid].blink();
+		NoteEntities[uid]?.scrollToNote();
+		NoteEntities[uid]?.blink();
+	}
+	
+	//设定笔记实体
+	function setEntities(uid,entity){
+		NoteEntities[uid]=entity;
 	}
 	
 	return {
@@ -232,7 +235,9 @@ let NoteManager=(()=>{
 		setNote:setNote,
 		removeNote:removeNote,
 		cloneNote:cloneNote,
-		locateNote:locateNote
+		locateNote:locateNote,
+		SendMessage:SendMessage,
+		createUID:createUID
 	}
 	
 })();
@@ -315,7 +320,7 @@ function NoteFactory(noteObj){
 	//添加字数监测
 	function addWnumMonitor(ele){
 		//字数监测
-		const maxwnum=800;//最大字数上限
+		const maxwnum=10;//最大字数上限
 		ele.addEventListener('keydown',(event)=>{
 			let tg=event.target;
 			tg.dataset.wnum=tg.innerText.length;
@@ -327,7 +332,15 @@ function NoteFactory(noteObj){
 			let tg=event.target;
 			tg.dataset.wnum=tg.innerText.length;
 			if(tg.innerText.length > maxwnum+10){
+				let sel=window.getSelection();
+				sel.empty();
+				let range=new Range();
+			
 				tg.innerText=tg.innerText.substr(0,maxwnum);
+				range.selectNode(tg.firstChild);
+				sel.addRange(range);
+				sel.collapseToEnd();
+				
 				tg.dataset.wnum=tg.innerText.length;
 				event.preventDefault();
 			}
@@ -404,7 +417,7 @@ function NoteFactory(noteObj){
 		//内部主题创建
 		let NoteBody=document.createElement("div");
 		NoteBody.classList.add('weshareNoteBody');
-		NoteBody.innerHTML=noteObj["content"];
+		NoteBody.innerText=noteObj["content"];
 		addEditFunc(NoteBody);//添加编辑功能
 		addWnumMonitor(NoteBody);//添加字数监测
 		childDivs['NoteBody']=NoteBody;
