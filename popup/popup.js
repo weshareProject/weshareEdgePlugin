@@ -58,7 +58,7 @@ $('locnote').addEventListener('click',()=>{
 	})();
 });
 
-
+/*
 //添加高亮
 $('highlight').addEventListener('click',()=>{
 	(async ()=>{
@@ -68,7 +68,7 @@ $('highlight').addEventListener('click',()=>{
 		}
 	})();
 });
-
+*/
 
 //账户显示
 (async ()=>{
