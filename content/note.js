@@ -107,12 +107,11 @@ let NoteManager=(()=>{
 	
 	//生成uid
 	function createUID(){
-		let prefix="temp";
 		let timestamp=Date.now();//时间戳
 		let postfix=(()=>{
-			return Math.random().toString(36).slice(-8) || "nufix";//随机后缀
+			return Math.random().toString(10).slice(-2);//随机后缀
 		})();
-		let uid=prefix+timestamp.toString(36)+postfix;
+		let uid=timestamp.toString(10).slice(-7)+postfix;
 		return uid;
 	}
 	
