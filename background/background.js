@@ -25,7 +25,6 @@ let AllNoteManager=(()=>{
 	//{网站url:{url:网页url,title:网页title,num:笔记条数}，...}
 	let NoteWebUrl={};
 	
-	
 	//存储api
 	let Storage=chrome.storage.local;
 	
@@ -171,6 +170,12 @@ let AllNoteManager=(()=>{
 		return NoteWebUrl;
 	}
 	
+	//清除存储笔记
+	async function clearAll(){
+		NoteWebUrl={};
+		await saveNoteWebUrl();
+	}
+	
 	return {
 		init:init,
 		loadNote:loadNote,
@@ -178,7 +183,8 @@ let AllNoteManager=(()=>{
 		setNote:setNote,
 		removeNote:removeNote,
 		addNote:newNote,//等同new
-		getNoteWebUrl:getNoteWebUrl
+		getNoteWebUrl:getNoteWebUrl,
+		clearAll:clearAll
 	}
 })();
 AllNoteManager.init();
@@ -592,7 +598,7 @@ let CloudServerManager=(()=>{
 	
 	//下载笔记 
 	async function downloadNote(){
-		let ret="downloadNote failed";
+		let ret="downloadNote failed<br>";
 		await checkToken();
 		
 		//TODO
@@ -609,7 +615,24 @@ let CloudServerManager=(()=>{
 		};
 		
 		let dlresponse=await easyFetch(BACKEND_API.DOWNLOAD_NOTE,fetchObj);
-		console.log(dlresponse);
+		if(!dlresponse.ok){
+			return ret;
+		}
+		
+		ret="download finished<br>";
+		
+		let notes=dlresponse.data;
+		if(!notes)notes=[];
+		console.log(notes);
+		AllNoteManager.clearAll();
+		for(let i=0;i<notes.length;i++){
+			
+			notes[i].uid=notes[i].id;
+			delete notes[i].id;
+			notes[i].position=JSON.parse(notes[i].position);
+			console.log(notes[i]);
+			AllNoteManager.addNote(notes[i]);
+		}
 		
 		return ret;
 	}

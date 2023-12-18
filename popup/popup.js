@@ -64,6 +64,7 @@ $('uploadnote').addEventListener('click',()=>{
 		let tab=await getCurrentTab();
 		if(tab[0]){
 			let response=await SendMessage({op:903});//上传笔记
+			response=response.replaceAll('<br>','\n');
 			alert(response);
 		}
 	})()
