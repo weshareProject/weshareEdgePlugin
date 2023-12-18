@@ -7,14 +7,6 @@ chrome.runtime.onInstalled.addListener(()=>{
 		id:"weshareAddnote"
 	});
 	
-	/*
-	chrome.contextMenus.create({
-		title:"高亮标记",
-		contexts:["selection"],
-		id:"weshareHighlight"
-	});
-	*/
-	
 });
 
 //右键菜单监听添加
@@ -589,6 +581,10 @@ let CloudServerManager=(()=>{
 				saveWaitUploadNotes();
 			}
 			ret+="DEL:"+delresponse.message+"<br>";
+		}
+		
+		if(""==ret){
+			ret="Nothing to Upload";
 		}
 		
 		return ret;

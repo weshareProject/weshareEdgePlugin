@@ -58,17 +58,16 @@ $('locnote').addEventListener('click',()=>{
 	})();
 });
 
-/*
-//添加高亮
-$('highlight').addEventListener('click',()=>{
+//上传笔记
+$('uploadnote').addEventListener('click',()=>{
 	(async ()=>{
 		let tab=await getCurrentTab();
 		if(tab[0]){
-			chrome.tabs.sendMessage(tab[0].id,{op:"highlight"});
+			let response=await SendMessage({op:903});//上传笔记
+			alert(response);
 		}
-	})();
+	})()
 });
-*/
 
 //账户显示
 (async ()=>{
