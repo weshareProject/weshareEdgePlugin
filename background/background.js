@@ -365,7 +365,7 @@ let CloudServerManager=(()=>{
 			}
 		}
 		
-		if(ret.code==200){
+		if(ret.code>=200&&ret.code<300){
 			ret.ok=true;
 		}else{
 			ret.ok=false;
@@ -513,7 +513,7 @@ let CloudServerManager=(()=>{
 				let uploadObj={
 					"content": handleNote.content,
 					"createTime":new Date(handleNote.createtime).toISOString(),
-					"id": handleNote.uid,
+					"temid": handleNote.uid,
 					"isPublic":0,
 					"url":handleNote.url,
 					"position":JSON.stringify(handleNote.position)
@@ -547,12 +547,13 @@ let CloudServerManager=(()=>{
 			fetchObj.content=newnotes;
 			newresponse=await easyFetch(BACKEND_API.UPLOAD_NOTE,fetchObj);
 			
-			if(newresponse.ok&&newresponse.code==200){
+			if(newresponse.ok){
 				for(let i=0;i<newnotes.length;i++){
 					let uid=newnotes[i].id;
 					delete waitUploadNotes[uid];
 				}
 				saveWaitUploadNotes();
+				console.log('new upload success');
 			}
 			ret+="NEW:"+newresponse.message+"<br>";
 		}
@@ -563,12 +564,13 @@ let CloudServerManager=(()=>{
 			fetchObj.content=modnotes;
 			modresponse=await easyFetch(BACKEND_API.UPLOAD_NOTE,fetchObj); 
 			
-			if(modresponse.ok&&modresponse.code==200){
+			if(modresponse.ok){
 				for(let i=0;i<modnotes.length;i++){
 					let uid=modnotes[i].id;
 					delete waitUploadNotes[uid];
 				}
 				saveWaitUploadNotes();
+				console.log('mod upload success');
 			}
 			ret+="MOD:"+modresponse.message+"<br>";
 		}
@@ -579,12 +581,13 @@ let CloudServerManager=(()=>{
 			fetchObj.content=delnotes;
 			delresponse=await easyFetch(BACKEND_API.UPLOAD_NOTE,fetchObj); 
 		
-			if(delresponse.ok&&delresponse.code==200){
+			if(delresponse.ok){
 				for(let i=0;i<delnotes.length;i++){
 					let uid=delnotes[i];
 					delete waitUploadNotes[uid];
 				}
 				saveWaitUploadNotes();
+				console.log('del upload success');
 			}
 			ret+="DEL:"+delresponse.message+"<br>";
 		}
@@ -627,8 +630,8 @@ let CloudServerManager=(()=>{
 		AllNoteManager.clearAll();
 		for(let i=0;i<notes.length;i++){
 			
-			notes[i].uid=notes[i].id;
-			delete notes[i].id;
+			notes[i].uid=notes[i].temid;
+			delete notes[i].temid;
 			notes[i].position=JSON.parse(notes[i].position);
 			console.log(notes[i]);
 			AllNoteManager.addNote(notes[i]);
@@ -852,7 +855,7 @@ chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
 	
 	(async()=>{
 		let resp=await tp;
-		if(resp!="noaction")console.log(resp);
+		//if(resp!="noaction")console.log(resp);
 		sendResponse(resp);
 	})();
 	return true;
