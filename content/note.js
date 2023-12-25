@@ -69,8 +69,6 @@ const OPERATION_CODE_NOTE={
 
 //NoteManager负责所有Note的载入和管理
 let NoteManager=(()=>{
-	//记录本页面所有note
-	let NoteList={};
 	/*
 	笔记基本格式:	
 	{uid:{
@@ -89,6 +87,7 @@ let NoteManager=(()=>{
 		createtime:创建时间
 	}...};
 	*/
+	//记录本页所有笔记的NoteList弃用,改为NoteEntities维护
 	
 	//笔记div实体维护
 	let NoteEntities={};
@@ -108,12 +107,12 @@ let NoteManager=(()=>{
 	
 	//生成uid
 	function createUID(){
-		let prefix="temp";
+		let perfix="100";
 		let timestamp=Date.now();//时间戳
 		let postfix=(()=>{
-			return Math.random().toString(36).slice(-8) || "nufix";//随机后缀
+			return Math.random().toString(10).slice(-8)||"00000000";//随机后缀
 		})();
-		let uid=prefix+timestamp.toString(36)+postfix;
+		let uid=perfix+timestamp.toString(10)+postfix;
 		return uid;
 	}
 	
@@ -130,6 +129,7 @@ let NoteManager=(()=>{
 	//载入数据
 	async function loadNote(){
 		
+		let NoteList={};
 		let nt=await SendMessage({op:OPERATION_CODE_NOTE.LOAD_NOTE,url:getWebUrl()});
 		if(nt)NoteList=nt;
 		
@@ -163,12 +163,11 @@ let NoteManager=(()=>{
 		let content="weshareNote";
 		let top_=Number(scrollTop)+Number(po.y)+"px";
 		let left=Number(scrollLeft)+Number(po.x)+"px";
-		let noteob={"uid":uid,"content":content,"position":{"top":top_,"left":left},"permission":"private","ownerId":"000000000000","ownerName":"me","url":getWebUrl(),"webtitle":document.title,"createtime":Date.now()};
-		NoteList[uid]=noteob;
+		let noteObj={"uid":uid,"content":content,"position":{"top":top_,"left":left},"permission":"private","ownerId":"000000000000","ownerName":"me","url":getWebUrl(),"webtitle":document.title,"createtime":Date.now()};
 		
-		await SendMessage({op:OPERATION_CODE_NOTE.NEW_NOTE,noteObj:NoteList[uid],webObj:getWebObj()});//发送到background
+		await SendMessage({op:OPERATION_CODE_NOTE.NEW_NOTE,noteObj:noteObj,webObj:getWebObj()});//发送到background
 		
-		let entity=NoteFactory(NoteList[uid]);
+		let entity=NoteFactory(noteObj);
 		entity.createNoteDiv();
 		NoteEntities[uid]=entity;
 	}
@@ -177,17 +176,15 @@ let NoteManager=(()=>{
 	async function setNote(noteObj){
 		let uid=noteObj["uid"];
 		if(uid){
-			NoteList[uid]=noteObj;
-			await SendMessage({op:OPERATION_CODE_NOTE.SET_NOTE,noteObj:NoteList[uid],webObj:getWebObj()});//发送到background
+			await SendMessage({op:OPERATION_CODE_NOTE.SET_NOTE,noteObj:noteObj,webObj:getWebObj()});//发送到background
 		}
 	}
 	
 	//删除note
 	async function removeNote(noteObj){
 		let uid=noteObj["uid"];
-		if(NoteList[uid]){
-			await SendMessage({op:OPERATION_CODE_NOTE.REMOVE_NOTE,noteObj:NoteList[uid],webObj:getWebObj()});//发送到background
-			delete NoteList[uid];
+		if(NoteEntities[uid]){
+			await SendMessage({op:OPERATION_CODE_NOTE.REMOVE_NOTE,noteObj:noteObj,webObj:getWebObj()});//发送到background
 			delete NoteEntities[uid];
 		}
 	}
@@ -197,11 +194,10 @@ let NoteManager=(()=>{
 		let uid=createUID();
 		
 		let noteob={"uid":uid,"content":noteObj.content,"position":noteObj.position,"permission":"private","ownerId":"000000000000","ownerName":"me","url":getWebUrl(),"webtitle":document.title,"createtime":Date.now()};
-		NoteList[uid]=noteob;
 		
-		await SendMessage({op:OPERATION_CODE_NOTE.NEW_NOTE,noteObj:NoteList[uid],webObj:getWebObj()});//发送到background
+		await SendMessage({op:OPERATION_CODE_NOTE.NEW_NOTE,noteObj:noteObj,webObj:getWebObj()});//发送到background
 		
-		let entity=NoteFactory(NoteList[uid]);
+		let entity=NoteFactory(noteObj);
 		entity.createNoteDiv();
 		NoteEntities[uid]=entity;
 	}
@@ -209,12 +205,11 @@ let NoteManager=(()=>{
 	//滚动定位笔记
 	let locateIndex=-1;
 	function locateNote(){
-		let noteKeys=Object.keys(NoteList);
+		let noteKeys=Object.keys(NoteEntities);
 		if(noteKeys.length<=0){
 			alert('本页面无笔记');
 			return;
 		}
-		
 		
 		if(locateIndex<0){
 			locateIndex=0
@@ -223,21 +218,16 @@ let NoteManager=(()=>{
 		}
 		if(locateIndex>=noteKeys.length)locateIndex=0;
 		let uid=noteKeys[locateIndex];
-		let noteObj=NoteList[uid];
 		
-		let pos=noteObj.position;
-		if(pos&&pos.top&&pos.left){
-			let top_=parseInt(pos.top);
-			let left_=parseInt(pos.left);
-			let ht=document.documentElement.clientHeight || document.body.clientHeight;
-			window.scrollTo({left:left_,top:top_-ht/4,behavior:'smooth'});
-			console.log(pos);
-		}
-		
-		NoteEntities[uid].blink();
+		NoteEntities[uid]?.scrollToNote();
+		NoteEntities[uid]?.blink();
 	}
 	
-
+	//设定笔记实体
+	function setEntities(uid,entity){
+		NoteEntities[uid]=entity;
+	}
+	
 	return {
 		init:init,
 		loadNote:loadNote,
@@ -245,7 +235,10 @@ let NoteManager=(()=>{
 		setNote:setNote,
 		removeNote:removeNote,
 		cloneNote:cloneNote,
-		locateNote:locateNote
+		locateNote:locateNote,
+		SendMessage:SendMessage,
+		createUID:createUID,
+		getWebObj:getWebObj
 	}
 	
 })();
@@ -328,7 +321,7 @@ function NoteFactory(noteObj){
 	//添加字数监测
 	function addWnumMonitor(ele){
 		//字数监测
-		const maxwnum=800;//最大字数上限
+		const maxwnum=10;//最大字数上限
 		ele.addEventListener('keydown',(event)=>{
 			let tg=event.target;
 			tg.dataset.wnum=tg.innerText.length;
@@ -340,7 +333,15 @@ function NoteFactory(noteObj){
 			let tg=event.target;
 			tg.dataset.wnum=tg.innerText.length;
 			if(tg.innerText.length > maxwnum+10){
+				let sel=window.getSelection();
+				sel.empty();
+				let range=new Range();
+			
 				tg.innerText=tg.innerText.substr(0,maxwnum);
+				range.selectNode(tg.firstChild);
+				sel.addRange(range);
+				sel.collapseToEnd();
+				
 				tg.dataset.wnum=tg.innerText.length;
 				event.preventDefault();
 			}
@@ -417,7 +418,7 @@ function NoteFactory(noteObj){
 		//内部主题创建
 		let NoteBody=document.createElement("div");
 		NoteBody.classList.add('weshareNoteBody');
-		NoteBody.innerHTML=noteObj["content"];
+		NoteBody.innerText=noteObj["content"];
 		addEditFunc(NoteBody);//添加编辑功能
 		addWnumMonitor(NoteBody);//添加字数监测
 		childDivs['NoteBody']=NoteBody;
@@ -486,6 +487,11 @@ function NoteFactory(noteObj){
 		});
 	}
 	
+	//滚动到笔记位置
+	function scrollToNote(){
+		let ht=document.documentElement.clientHeight || document.body.clientHeight;
+		window.scrollTo({left:NoteParentDiv.offsetLeft,top:NoteParentDiv.offsetTop-ht/4,behavior:'smooth'});
+	}
 	
 	return {
 		createNoteDiv:createNoteDiv,
@@ -494,7 +500,8 @@ function NoteFactory(noteObj){
 		hid:hid,
 		getParentDiv:getParentDiv,
 		getChildDivs:getChildDivs,
-		blink:blink
+		blink:blink,
+		scrollToNote:scrollToNote
 	}
 }
 
@@ -574,7 +581,7 @@ let PublicNoteManager=(()=>{
 		
 		
 		let pos=noteObj.position;
-		if(pos){
+		if(pos&&pos.top){
 			let top_=pos.top;
 			let left=pos.left;
 			parentDiv.style.top=top_;

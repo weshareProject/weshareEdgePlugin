@@ -3,14 +3,8 @@
 chrome.runtime.onInstalled.addListener(()=>{
 	chrome.contextMenus.create({
 		title:"添加笔记",
-		contexts:["all"],
+		contexts:["page"],
 		id:"weshareAddnote"
-	});
-	
-	chrome.contextMenus.create({
-		title:"高亮标记",
-		contexts:["selection"],
-		id:"weshareHighlight"
 	});
 	
 });
@@ -30,7 +24,6 @@ let AllNoteManager=(()=>{
 	//网站笔记表
 	//{网站url:{url:网页url,title:网页title,num:笔记条数}，...}
 	let NoteWebUrl={};
-	
 	
 	//存储api
 	let Storage=chrome.storage.local;
@@ -63,6 +56,7 @@ let AllNoteManager=(()=>{
 	//保存指定url的笔记
 	async function saveNote(urlObj,notes){
 		//console.log(urlObj);
+		console.log(notes);
 		let num=urlObj.num;
 		//num=Object.keys(notes).length;
 		let url=urlObj.url;
@@ -98,7 +92,6 @@ let AllNoteManager=(()=>{
 		if(urlObj){
 			urlObj.num++;
 			let tp=await loadNote(url);
-			if(!tp)tp={};
 			tp[uid]=noteObj;
 			notes=tp;
 		}else{
@@ -123,7 +116,6 @@ let AllNoteManager=(()=>{
 		if(urlObj){
 			//读取网页笔记存储
 			let tp=await loadNote(url);
-			if(!tp)tp={};
 			//如果有笔记记录则修改,没有则新增
 			if(tp[uid]){
 				tp[uid]=noteObj;
@@ -153,8 +145,6 @@ let AllNoteManager=(()=>{
 		if(urlObj){
 			//读取网页笔记存储
 			let tp=await loadNote(url);
-			if(!tp)tp={};
-			
 			if(tp[uid]){
 				urlObj.num--;
 				delete tp[uid];
@@ -177,6 +167,13 @@ let AllNoteManager=(()=>{
 		return NoteWebUrl;
 	}
 	
+	//清除存储笔记
+	async function clearAll(){
+		NoteWebUrl={};
+		console.log('clear all notes');
+		await saveNoteWebUrl();
+	}
+	
 	return {
 		init:init,
 		loadNote:loadNote,
@@ -184,7 +181,8 @@ let AllNoteManager=(()=>{
 		setNote:setNote,
 		removeNote:removeNote,
 		addNote:newNote,//等同new
-		getNoteWebUrl:getNoteWebUrl
+		getNoteWebUrl:getNoteWebUrl,
+		clearAll:clearAll
 	}
 })();
 AllNoteManager.init();
@@ -274,7 +272,7 @@ let CloudServerManager=(()=>{
 	
 	
 	//增
-	function newNote(noteObj){
+	async function newNote(noteObj){
 		let uid=noteObj.uid;
 		let ntObj=clone(noteObj);
 		ntObj["status"]=NOTE_STATUS.NEW;
@@ -285,11 +283,12 @@ let CloudServerManager=(()=>{
 			//若没有记录前一个状态,代表前一个状态时笔记已经被upload过了,那么还原就是新增
 		}
 		waitUploadNotes[uid]=ntObj;
-		saveWaitUploadNotes();
+		await saveWaitUploadNotes();
+		checkupload();
 	}
 	
 	//改
-	function setNote(noteObj){
+	async function setNote(noteObj){
 		let uid=noteObj.uid;
 		let ntObj=clone(noteObj);
 		ntObj["status"]=NOTE_STATUS.MOD;
@@ -297,11 +296,12 @@ let CloudServerManager=(()=>{
 			ntObj["status"]=NOTE_STATUS.NEW;//新增的笔记,状态依然记录新增
 		}
 		waitUploadNotes[uid]=ntObj;
-		saveWaitUploadNotes();
+		await saveWaitUploadNotes();
+		checkupload();
 	}
 	
 	//删
-	function removeNote(noteObj){
+	async function removeNote(noteObj){
 		let uid=noteObj.uid;
 		let ntObj=clone(noteObj);
 		if(waitUploadNotes[uid]){
@@ -309,7 +309,8 @@ let CloudServerManager=(()=>{
 		}
 		ntObj["status"]=NOTE_STATUS.DEL;
 		waitUploadNotes[uid]=ntObj;
-		saveWaitUploadNotes();
+		await saveWaitUploadNotes();
+		checkupload();
 	}
 	
 	//载入所有waitUploadNotes
@@ -325,20 +326,6 @@ let CloudServerManager=(()=>{
 		await Storage.set({"waitUploadNotes":JSON.stringify(waitUploadNotes)});
 	}
 	
-	//获取指定url界面所有public笔记
-	async function getPublicNote(url){
-		//TODO
-		console.log('getPublicNote');
-		let tp=await AllNoteManager.loadNote(url);
-		if(!tp)tp={};
-		let res=[];
-		for(let i in tp){
-			res.push(tp[i]);
-		}
-		return res;
-	}
-	
-	
 	//用户信息
 	//{userName:用户名,pass:密码,token:token，expirationTime:token过期时间点}
 	let user={userName:null,pass:null,token:null,expirationTime:null};
@@ -348,11 +335,14 @@ let CloudServerManager=(()=>{
 	async function easyFetch(url,{method="GET",headers={"Content-Type": "application/json"},content={}}){
 		let ret={ok:false,code:0,data:{},message:"unknow error"};
 		try{
-			let resp=await fetch(url,{
+			let fetchObj={
 				method:method,
 				headers:headers,
-				body:JSON.stringify(content)
-			});
+			};
+			if(method!='GET'){
+				fetchObj.body=JSON.stringify(content);
+			}
+			let resp=await fetch(url,fetchObj);
 			let response=await resp.json();
 		
 			if(resp.ok){
@@ -373,7 +363,7 @@ let CloudServerManager=(()=>{
 			}
 		}
 		
-		if(ret.code==200){
+		if(ret.code>=200&&ret.code<300){
 			ret.ok=true;
 		}else{
 			ret.ok=false;
@@ -395,8 +385,8 @@ let CloudServerManager=(()=>{
 		let LOGOUT=backendURL+"/user/logout";
 		//上传笔记
 		let UPLOAD_NOTE=backendURL+"/note/s";
-		//下载笔记
-		let DOWNLOAD_NOTE=backendURL+"/note/s";
+		//下载用户笔记
+		let DOWNLOAD_NOTE=backendURL+"/note/user";
 		
 		
 		return {
@@ -425,7 +415,7 @@ let CloudServerManager=(()=>{
 			user.pass=usr.pass;
 			user.userName=usr.userName;
 			user.token=response.data.tokenHead+" "+response.data.token;
-			user.expirationTime=Date.now()+300*1000;//TODO:后台返回生存时间
+			user.expirationTime=Date.now()+5*60*1000;//TODO:后台返回生存时间
 			let sav={};
 			sav["weshareUser"]=JSON.stringify(user);
 			Storage.set(sav);
@@ -488,11 +478,26 @@ let CloudServerManager=(()=>{
 		return user;
 	}
 	
+	//上传检测
+	async function checkupload(){
+		if(user.token){
+			let lastupload=await Storage.get('lastuploadtime');
+			if(!lastupload)lastupload=0;
+			let nowtime=Date.now();
+			if((nowtime-lastupload)>6000){
+				uploadNote();
+				Storage.set({'lastuploadtime':nowtime});
+			}
+		}
+	}
 	
 	//上传笔记 
 	async function uploadNote(){
 		let ret="uploadNote failed";
 		await checkToken();
+		if(!user.token){
+			return ret+":no token";
+		}
 		let newnotes=[];
 		let modnotes=[];
 		let delnotes=[];
@@ -505,11 +510,11 @@ let CloudServerManager=(()=>{
 			}else{
 				let uploadObj={
 					"content": handleNote.content,
-					"createTime":handleNote.createtime,
-					"id": handleNote.uid,
+					"createTime":new Date(handleNote.createtime).toISOString(),
+					"tempId": handleNote.uid,
 					"isPublic":0,
 					"url":handleNote.url,
-					"position":handleNote.position
+					"position":JSON.stringify(handleNote.position)
 				};
 				
 				if(handleNote['status']==NOTE_STATUS.NEW){
@@ -533,65 +538,129 @@ let CloudServerManager=(()=>{
 				"Authorization":user.token
 			}
 		};
-		
+		ret="";
 		//上传新建笔记
 		if(newnotes.length>0){
 			fetchObj.method="POST";
 			fetchObj.content=newnotes;
-			//newresponse=await easyFetch(BACKEND_API.UPLOAD_NOTE,fetchObj);
+			newresponse=await easyFetch(BACKEND_API.UPLOAD_NOTE,fetchObj);
 			
 			if(newresponse.ok){
 				for(let i=0;i<newnotes.length;i++){
-					let uid=newnotes[i].uid;
+					let uid=newnotes[i].tempId;
 					delete waitUploadNotes[uid];
 				}
-			}	
+				saveWaitUploadNotes();
+				console.log('new upload success');
+			}
+			ret+="NEW:"+newresponse.message+"<br>";
 		}
 		
 		//上传修改笔记
 		if(modnotes.length>0){
 			fetchObj.method="PUT";
 			fetchObj.content=modnotes;
-			//modresponse=await easyFetch(BACKEND_API.UPLOAD_NOTE,fetchObj); 
+			modresponse=await easyFetch(BACKEND_API.UPLOAD_NOTE,fetchObj); 
 			
 			if(modresponse.ok){
 				for(let i=0;i<modnotes.length;i++){
-					let uid=modnotes[i].uid;
+					let uid=modnotes[i].tempId;
 					delete waitUploadNotes[uid];
 				}
+				saveWaitUploadNotes();
+				console.log('mod upload success');
 			}
+			ret+="MOD:"+modresponse.message+"<br>";
 		}
 		
 		//上传删除笔记
 		if(delnotes.length>0){
 			fetchObj.method="DELETE";
 			fetchObj.content=delnotes;
-			//delresponse=await easyFetch(BACKEND_API.UPLOAD_NOTE,fetchObj); 
+			delresponse=await easyFetch(BACKEND_API.UPLOAD_NOTE,fetchObj); 
 		
 			if(delresponse.ok){
 				for(let i=0;i<delnotes.length;i++){
 					let uid=delnotes[i];
 					delete waitUploadNotes[uid];
 				}
+				saveWaitUploadNotes();
+				console.log('del upload success');
 			}
+			ret+="DEL:"+delresponse.message+"<br>";
 		}
 		
-		saveWaitUploadNotes();
+		if(""==ret){
+			ret="Nothing to Upload<br>";
+		}
 		
 		return ret;
 	}
 	
 	//下载笔记 
 	async function downloadNote(){
-		let ret="downloadNote failed";
+		let ret="downloadNote failed<br>";
 		await checkToken();
 		
 		//TODO
+		if(!user.token){
+			return ret+':no token';
+		}
+		
+		let fetchObj={
+			method:"GET",
+			headers:{
+				"Content-Type": "application/json",
+				"Authorization":user.token
+			}
+		};
+		
+		let dlresponse=await easyFetch(BACKEND_API.DOWNLOAD_NOTE,fetchObj);
+		if(!dlresponse.ok){
+			return ret;
+		}
+		
+		ret="download finished<br>";
+		
+		let notes=dlresponse.data;
+		if(!notes)notes=[];
+		console.log(notes);
+		AllNoteManager.clearAll();
+		for(let i=0;i<notes.length;i++){
+			
+			notes[i].uid=notes[i].tempId;
+			delete notes[i].tempId;
+			notes[i].position=JSON.parse(notes[i].position);
+			//console.log(notes[i]);
+			await AllNoteManager.addNote(notes[i]);
+		}
+		
+		//console.log(notes);
 		
 		return ret;
 	}
 	
-	
+	//获取指定url界面所有public笔记
+	async function getPublicNote(url){
+		//TODO
+		console.log('getPublicNote');
+		let res=[];
+		let fetchObj={
+			method:"GET",
+			headers:{
+				"Content-Type": "application/json",
+				"Authorization":user.token
+			}     
+		}; 
+		let pnresponse=await easyFetch(BACKEND_API.DOWNLOAD_NOTE+"&url='"+window.btoa(url)+"'",fetchObj);
+		if(!pnresponse.ok){
+			return [];
+		}else{
+			res=pnresponse.data;
+		}
+		console.log(res);
+		return res;
+	}
 
 	//初始化
 	async function init(){
@@ -649,7 +718,8 @@ const OPERATION_CODE={
 	CLOUD_DOWNLOAD:904,
 	GET_USER_INFO:905,
 	
-	GET_PUBLIC_NOTE:908
+	GET_PUBLIC_NOTE:908,
+	MANUAL_CLOUD:909
 	
 };
 
@@ -770,6 +840,14 @@ let MessageHandler=(()=>{
 		return CloudServerManager.getPublicNote(url);
 	};
 	
+	//手动同步
+	handlers[OPERATION_CODE.MANUAL_CLOUD]=async function(message){
+		let ret="";
+		ret+=await CloudServerManager.uploadNote();
+		ret+=await CloudServerManager.downloadNote();
+		return ret;
+	};
+	
 	return handlers;
 })();
 
@@ -784,7 +862,7 @@ chrome.runtime.onMessage.addListener((message,sender,sendResponse)=>{
 	
 	(async()=>{
 		let resp=await tp;
-		if(resp!="noaction")console.log(resp);
+		//if(resp!="noaction")console.log(resp);
 		sendResponse(resp);
 	})();
 	return true;

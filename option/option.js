@@ -19,7 +19,9 @@ const OPERATION_CODE_OPTION={
 	LOGOUT:902,
 	CLOUD_UPLOAD:903,
 	CLOUD_DOWNLOAD:904,
-	GET_USER_INFO:905
+	GET_USER_INFO:905,
+	
+	MANUAL_CLOUD:909
 
 };
 
@@ -120,7 +122,7 @@ function sizeBtnFactory(btnObj){
 	btn.innerHTML=showval;
 	async function checked(){
 		let btns=$(attr).querySelectorAll('.setBtn');
-		console.log(btns);
+		
 		for(let i=0;i<btns.length;i++){
 			btns[i].style.borderColor="var(--unchecked)";
 			btns[i].style.color="var(--unchecked)";
@@ -312,7 +314,7 @@ $('logoutBtn').onclick=async ()=>{
 //手动同步
 $('manualcloud').onclick=async ()=>{
 	$('tips').innerHTML="<span style='color:purple'>请勿关闭浏览器<br>正在同步,请耐心等待...</span>";
-	let rsp=await SendMessage({op:OPERATION_CODE_OPTION.CLOUD_UPLOAD});
+	let rsp=await SendMessage({op:OPERATION_CODE_OPTION.MANUAL_CLOUD});
 	makeTips(rsp);	
 }
 

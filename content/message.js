@@ -18,13 +18,8 @@ let MessagerHandler=(()=>{
 		else NoteManager.newNote();
 	};
 	
-	//高亮
-	handlers['highlight']=function(message){
-		Highlight.highlight();
-	};
-	
 	//公开笔记
-	handlers['highlight']=function(message){
+	handlers['publicNoteSwitch']=function(message){
 		PublicNoteManager.changeParentDivVisible();
 	};
 	

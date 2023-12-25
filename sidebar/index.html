@@ -2,10 +2,31 @@
 <html>
 <head>
 <meta charset="utf-8">
-<link rel="stylesheet" type="text/css" href="popup.css">
 <title>weshare</title>
+<style>
+	*{
+		margin:0;
+		padding:0;
+	}
+	
+	html,body{
+		width:100%;
+		height:100%;
+	}
+	
+	#container{
+		width:100%;
+		height:100%;
+	}
+	
+</style>
 </head>
 <body>
-	TODO:侧边栏接入官网
+<div id='container'>
+<!--记得修改src的url-->
+<iframe id="myframe" src='http://127.0.0.1:5173' width='100%' height='99%' frameborder=0 scrolling='yes'>
+</iframe>
+</div>
+<script src="sidebar.js"></script>
 </body>
 </html>
