@@ -388,12 +388,15 @@ let CloudServerManager=(()=>{
 		//下载用户笔记
 		let DOWNLOAD_NOTE=backendURL+"/note/user";
 		
+		//获取公开笔记
+		let GET_PUBLIC_NOTE=backendURL+"/note/t";
 		
 		return {
 			LOGIN:LOGIN,
 			LOGOUT:LOGOUT,
 			UPLOAD_NOTE:UPLOAD_NOTE,
-			DOWNLOAD_NOTE:DOWNLOAD_NOTE
+			DOWNLOAD_NOTE:DOWNLOAD_NOTE,
+			GET_PUBLIC_NOTE:GET_PUBLIC_NOTE
 		};
 	})();
 	
@@ -652,12 +655,15 @@ let CloudServerManager=(()=>{
 				"Authorization":user.token
 			}     
 		}; 
-		let pnresponse=await easyFetch(BACKEND_API.DOWNLOAD_NOTE+"&url='"+window.btoa(url)+"'",fetchObj);
+		let pnresponse=await easyFetch(BACKEND_API.GET_PUBLIC_NOTE+"?url='"+btoa(url)+"'",fetchObj);
 		if(!pnresponse.ok){
 			return [];
 		}else{
 			res=pnresponse.data;
 		}
+		res.forEach(item=>{
+			item.position=JSON.parse(item.position);
+		});
 		console.log(res);
 		return res;
 	}
