@@ -62,7 +62,9 @@ const OPERATION_CODE_NOTE={
 	REMOVE_NOTE:104,
 	
 	//9xx为云服务相关
-	GET_PUBLIC_NOTE:908
+	GET_PUBLIC_NOTE:908,
+	
+	LIKE_NOTE:912
 };
 
 
@@ -193,11 +195,11 @@ let NoteManager=(()=>{
 	async function cloneNote(noteObj){
 		let uid=createUID();
 		
-		let noteob={"uid":uid,"content":noteObj.content,"position":noteObj.position,"permission":"private","ownerId":"000000000000","ownerName":"me","url":getWebUrl(),"webtitle":document.title,"createtime":Date.now()};
+		let notecloned={"uid":uid,"content":noteObj.content,"position":noteObj.position,"permission":"private","ownerId":"000000000000","ownerName":"me","url":getWebUrl(),"webtitle":document.title,"createtime":Date.now()};
 		
-		await SendMessage({op:OPERATION_CODE_NOTE.NEW_NOTE,noteObj:noteObj,webObj:getWebObj()});//发送到background
+		await SendMessage({op:OPERATION_CODE_NOTE.NEW_NOTE,noteObj:notecloned,webObj:getWebObj()});//发送到background
 		
-		let entity=NoteFactory(noteObj);
+		let entity=NoteFactory(notecloned);
 		entity.createNoteDiv();
 		NoteEntities[uid]=entity;
 	}
@@ -716,7 +718,7 @@ let PublicNoteManager=(()=>{
 					delete tg.likenum;
 				}
 			}
-			//TODO			
+			SendMessage({op:OPERATION_CODE_NOTE.LIKE_NOTE,uid:tg.uid});		
 		}else{
 			publicNotes[notesIndex].like='like';
 			likeBtn.innerHTML="❤️";

@@ -391,12 +391,16 @@ let CloudServerManager=(()=>{
 		//获取公开笔记
 		let GET_PUBLIC_NOTE=backendURL+"/note/t";
 		
+		//点赞笔记
+		let LIKE_NOTE=backendURL+"/note/";
+		
 		return {
 			LOGIN:LOGIN,
 			LOGOUT:LOGOUT,
 			UPLOAD_NOTE:UPLOAD_NOTE,
 			DOWNLOAD_NOTE:DOWNLOAD_NOTE,
-			GET_PUBLIC_NOTE:GET_PUBLIC_NOTE
+			GET_PUBLIC_NOTE:GET_PUBLIC_NOTE,
+			LIKE_NOTE:LIKE_NOTE
 		};
 	})();
 	
@@ -515,7 +519,7 @@ let CloudServerManager=(()=>{
 			}else{
 				let uploadObj={
 					"content": handleNote.content,
-					"createTime":new Date(handleNote.createtime).toISOString(),
+					"createTime":handleNote.createtime,
 					"tempId": handleNote.uid,
 					"isPublic":0,
 					"url":handleNote.url,
@@ -665,9 +669,29 @@ let CloudServerManager=(()=>{
 		}
 		res.forEach(item=>{
 			item.position=JSON.parse(item.position);
+			item.uid=item.tempId;
 		});
 		console.log(res);
 		return res;
+	}
+
+	//点赞笔记
+	async function likeNote(uid){
+		console.log('like '+uid);
+		let ret="fail to fetch";
+		let fetchObj={
+			method:"PUT",
+			headers:{
+				"Content-Type": "application/json",
+				"Authorization":user.token
+			}     
+		}; 
+		let response=await easyFetch(BACKEND_API.LIKE_NOTE+uid,fetchObj);
+		if(response.ok){
+			ret=response.message;
+		}
+
+		return ret;
 	}
 
 	//初始化
@@ -691,7 +715,8 @@ let CloudServerManager=(()=>{
 		uploadNote:uploadNote,
 		downloadNote:downloadNote,
 		getUserInfo:getUserInfo,
-		getPublicNote:getPublicNote
+		getPublicNote:getPublicNote,
+		likeNote:likeNote
 	}
 	
 })();
@@ -727,7 +752,9 @@ const OPERATION_CODE={
 	GET_USER_INFO:905,
 	
 	GET_PUBLIC_NOTE:908,
-	MANUAL_CLOUD:909
+	MANUAL_CLOUD:909,
+	
+	LIKE_NOTE:912
 	
 };
 
@@ -855,6 +882,12 @@ let MessageHandler=(()=>{
 		ret+=await CloudServerManager.downloadNote();
 		return ret;
 	};
+	
+	//like笔记
+	handlers[OPERATION_CODE.LIKE_NOTE]=async function(message){
+		let uid=message.uid;
+		return CloudServerManager.likeNote(uid);
+	}
 	
 	return handlers;
 })();
