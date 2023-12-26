@@ -437,9 +437,7 @@ let CloudServerManager=(()=>{
 	
 	//注销
 	async function logout(){
-		//TODO
 		let ret="logout";
-		
 		let fetchObj={	
 				method:"POST",
 				headers:{
@@ -461,6 +459,10 @@ let CloudServerManager=(()=>{
 		}else{
 			ret+="<br>"+response.message;
 		}
+		
+		let sav={};
+		sav["weshareUser"]=JSON.stringify(user);
+		Storage.set(sav);
 
 		return ret;
 	}
