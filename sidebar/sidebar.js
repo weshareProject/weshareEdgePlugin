@@ -1,3 +1,7 @@
+document.cookie = "key=value; SameSite=None; Secure";
+console.log(window.location.protocol);
+console.log(window.location.href);
+console.log(window.location.host);
 //发信息
 async function SendMessage(messageObj){
 	await chrome.runtime.sendMessage({op:100});

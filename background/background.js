@@ -517,11 +517,14 @@ let CloudServerManager=(()=>{
 			if(handleNote['status']==NOTE_STATUS.DEL){
 				delnotes.push(i);
 			}else{
+				if(!handleNote.isPublic){
+					handleNote.isPublic=0;
+				}
 				let uploadObj={
 					"content": handleNote.content,
 					"createTime":handleNote.createtime,
 					"tempId": handleNote.uid,
-					"isPublic":0,
+					"isPublic":handleNote.isPublic,
 					"url":handleNote.url,
 					"position":JSON.stringify(handleNote.position)
 				};
@@ -670,6 +673,7 @@ let CloudServerManager=(()=>{
 		res.forEach(item=>{
 			item.position=JSON.parse(item.position);
 			item.uid=item.tempId;
+			item.likenum=item.likedNum;
 		});
 		console.log(res);
 		return res;

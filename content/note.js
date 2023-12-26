@@ -403,6 +403,35 @@ function NoteFactory(noteObj){
 	}
 	//----隐藏/显示功能end----
 	
+	//公开笔记设置
+	function addSetPublic(ele){
+		ele.ondblclick=()=>{
+			if(!noteObj.isPublic){
+				noteObj.isPublic=0;
+			}
+			
+			if(noteObj.isPublic==0){
+				if(window.confirm('是否将该笔记设置为公开笔记？')){
+					noteObj.isPublic=1;
+					NoteManager.setNote(noteObj);
+				}
+			}else{
+				if(window.confirm('是否将该笔记设置为不再公开？')){
+					noteObj.isPublic=0;
+					NoteManager.setNote(noteObj);
+				}
+			}
+			let infs="";
+			if(noteObj.createtime){
+				let tm=new Date(noteObj.createtime);
+				infs+="创建时间:"+tm.toLocaleString()+'\n';
+				if(noteObj?.isPublic==1){
+					infs+="该笔记为公开笔记";
+				}
+			}
+			ele.title=infs;
+		}
+	}
 	
 	
 	//创建相关div
@@ -450,9 +479,13 @@ function NoteFactory(noteObj){
 		let infs="";
 		if(noteObj.createtime){
 			let tm=new Date(noteObj.createtime);
-			infs+="创建时间:"+tm.toLocaleString();
+			infs+="创建时间:"+tm.toLocaleString()+'\n';
+			if(noteObj?.isPublic==1){
+				infs+="该笔记为公开笔记";
+			}
 		}
 		infBtn.title=infs;
+		addSetPublic(infBtn);
 		childDivs['infBtn']=infBtn;
 		
 		//放入父div中
@@ -718,7 +751,7 @@ let PublicNoteManager=(()=>{
 					delete tg.likenum;
 				}
 			}
-			SendMessage({op:OPERATION_CODE_NOTE.LIKE_NOTE,uid:tg.uid});		
+			
 		}else{
 			publicNotes[notesIndex].like='like';
 			likeBtn.innerHTML="❤️";
@@ -728,7 +761,7 @@ let PublicNoteManager=(()=>{
 				tg.likenum=1;
 			}
 			likeBtn.title=tg.likenum+" likes";
-			//TODO
+			SendMessage({op:OPERATION_CODE_NOTE.LIKE_NOTE,uid:tg.uid});		
 		}
 	}
 
