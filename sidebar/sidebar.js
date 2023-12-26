@@ -1,7 +1,6 @@
 document.cookie = "key=value; SameSite=None; Secure";
-console.log(window.location.protocol);
-console.log(window.location.href);
-console.log(window.location.host);
+
+
 //发信息
 async function SendMessage(messageObj){
 	await chrome.runtime.sendMessage({op:100});
@@ -11,5 +10,7 @@ async function SendMessage(messageObj){
 
 window.onload=async()=>{
 	let ret=await SendMessage({op:905});
-	document.getElementById('myframe').contentWindow.postMessage(JSON.stringify(ret),"*");
+	let myframe=document.getElementById('myframe');
+	console.log(ret);
+	myframe.contentWindow.postMessage(JSON.stringify(ret),"*");
 };
