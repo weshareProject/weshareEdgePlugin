@@ -19,7 +19,8 @@
 		  "cookies",
 		  "downloads",
 		  "history",
-		  "windows"
+		  "windows",
+		  "sidePanel"
  ],
  "action": {
 	"default_icon":"images/icon.png",
@@ -33,10 +34,12 @@
   "content_scripts": [
    {
      "matches": ["<all_urls>"],
-     "js": ["content/highlight.js","content/note.js","content/message.js"],
-	 "css":["content/highlight.css","content/note.css"]
+     "js": ["content/note.js","content/message.js"],
+	 "css":["content/note.css"]
    }
   ],
-  "options_page":"option/option.html"
-  
+  "options_page":"option/option.html",
+   "side_panel": {
+    "default_path": "sidebar/index.html"
+  }
 }

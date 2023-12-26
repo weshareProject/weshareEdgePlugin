@@ -16,6 +16,11 @@ const NOTE_OPTION=(()=>{
 	}
 	//页面载入时是否展开笔记设置
 	let visible_option=["hid"];
+	
+	//笔记图标
+	let icon=["📌"];
+	
+	
 	//初始化
 	async function init(){
 		//读取css设置
@@ -30,13 +35,17 @@ const NOTE_OPTION=(()=>{
 		let tp=await OPTION_STORAGE.get("visible_option");
 		if(tp['visible_option'])visible_option[0]=tp['visible_option'];
 		
+		let ic=await OPTION_STORAGE.get("icon");
+		if(ic['icon'])icon[0]=ic['icon'];
 	}
+	
 	
 	return {
 		init:init,
 		CSS_OPTIONS:css_options,
 		setElement:setElement,
-		VISIBLE_OPTIONS:visible_option
+		VISIBLE_OPTIONS:visible_option,
+		ICON:icon
 	}
 })();
 
@@ -50,15 +59,18 @@ const OPERATION_CODE_NOTE={
 	LOAD_NOTE:101,
 	NEW_NOTE:102,
 	SET_NOTE:103,
-	REMOVE_NOTE:104
+	REMOVE_NOTE:104,
+	
+	//9xx为云服务相关
+	GET_PUBLIC_NOTE:908,
+	
+	LIKE_NOTE:912
 };
 
 
 
 //NoteManager负责所有Note的载入和管理
 let NoteManager=(()=>{
-	//记录本页面所有note
-	let NoteList={};
 	/*
 	笔记基本格式:	
 	{uid:{
@@ -72,11 +84,15 @@ let NoteManager=(()=>{
 		"ownerId":创建者,
 		"ownerName":创建者昵称,
 		status:状态,
-		url:所在网页url,
+	    url:所在网页url,
 		webtitle:所在网页title,
 		createtime:创建时间
 	}...};
 	*/
+	//记录本页所有笔记的NoteList弃用,改为NoteEntities维护
+	
+	//笔记div实体维护
+	let NoteEntities={};
 	
 	//发信息
 	async function SendMessage(messageObj){
@@ -93,7 +109,13 @@ let NoteManager=(()=>{
 	
 	//生成uid
 	function createUID(){
-		return Date.now();
+		let perfix="100";
+		let timestamp=Date.now();//时间戳
+		let postfix=(()=>{
+			return Math.random().toString(10).slice(-8)||"00000000";//随机后缀
+		})();
+		let uid=perfix+timestamp.toString(10)+postfix;
+		return uid;
 	}
 	
 	//获取webURL
@@ -101,18 +123,24 @@ let NoteManager=(()=>{
 		return window.location.href;
 	}
 	
+	//生成webObj
+	function getWebObj(){
+		return {url:getWebUrl(),title:document.title};
+	}
 	
 	//载入数据
 	async function loadNote(){
 		
+		let NoteList={};
 		let nt=await SendMessage({op:OPERATION_CODE_NOTE.LOAD_NOTE,url:getWebUrl()});
-		if(nt)NoteList=JSON.parse(nt);
+		if(nt)NoteList=nt;
 		
 		console.log(NoteList);
 		for(let it in NoteList){
 			let note=NoteFactory(NoteList[it])
 			note.createNoteDiv();//建立div块
-				
+			NoteEntities[it]=note;
+			
 			//是否展开
 			if(NOTE_OPTION.VISIBLE_OPTIONS[0]=="show"){
 				note.show();
@@ -137,40 +165,82 @@ let NoteManager=(()=>{
 		let content="weshareNote";
 		let top_=Number(scrollTop)+Number(po.y)+"px";
 		let left=Number(scrollLeft)+Number(po.x)+"px";
-		let noteob={"uid":uid,"content":content,"position":{"top":top_,"left":left},"permission":"private","ownerId":"000000000000","ownerName":"me","url":getWebUrl(),"webtitle":document.title,"createtime":Date.now()};
-		NoteList[uid]=noteob;
+		let noteObj={"uid":uid,"content":content,"position":{"top":top_,"left":left},"permission":"private","ownerId":"000000000000","ownerName":"me","url":getWebUrl(),"webtitle":document.title,"createtime":Date.now()};
 		
-		await SendMessage({op:OPERATION_CODE_NOTE.NEW_NOTE,noteObj:NoteList[uid]});//发送到background
+		await SendMessage({op:OPERATION_CODE_NOTE.NEW_NOTE,noteObj:noteObj,webObj:getWebObj()});//发送到background
 		
-		NoteFactory(NoteList[uid]).createNoteDiv();
-		
+		let entity=NoteFactory(noteObj);
+		entity.createNoteDiv();
+		NoteEntities[uid]=entity;
 	}
 	
 	//修改note
 	async function setNote(noteObj){
 		let uid=noteObj["uid"];
 		if(uid){
-			NoteList[uid]=noteObj;
-			await SendMessage({op:OPERATION_CODE_NOTE.SET_NOTE,noteObj:NoteList[uid]});//发送到background
+			await SendMessage({op:OPERATION_CODE_NOTE.SET_NOTE,noteObj:noteObj,webObj:getWebObj()});//发送到background
 		}
 	}
 	
 	//删除note
 	async function removeNote(noteObj){
 		let uid=noteObj["uid"];
-		if(NoteList[uid]){
-			await SendMessage({op:OPERATION_CODE_NOTE.REMOVE_NOTE,noteObj:NoteList[uid]});//发送到background
-			delete NoteList[uid];
+		if(NoteEntities[uid]){
+			await SendMessage({op:OPERATION_CODE_NOTE.REMOVE_NOTE,noteObj:noteObj,webObj:getWebObj()});//发送到background
+			delete NoteEntities[uid];
 		}
 	}
 	
-
+	//克隆笔记
+	async function cloneNote(noteObj){
+		let uid=createUID();
+		
+		let notecloned={"uid":uid,"content":noteObj.content,"position":noteObj.position,"permission":"private","ownerId":"000000000000","ownerName":"me","url":getWebUrl(),"webtitle":document.title,"createtime":Date.now()};
+		
+		await SendMessage({op:OPERATION_CODE_NOTE.NEW_NOTE,noteObj:notecloned,webObj:getWebObj()});//发送到background
+		
+		let entity=NoteFactory(notecloned);
+		entity.createNoteDiv();
+		NoteEntities[uid]=entity;
+	}
+	
+	//滚动定位笔记
+	let locateIndex=-1;
+	function locateNote(){
+		let noteKeys=Object.keys(NoteEntities);
+		if(noteKeys.length<=0){
+			alert('本页面无笔记');
+			return;
+		}
+		
+		if(locateIndex<0){
+			locateIndex=0
+		}else{
+			locateIndex++;
+		}
+		if(locateIndex>=noteKeys.length)locateIndex=0;
+		let uid=noteKeys[locateIndex];
+		
+		NoteEntities[uid]?.scrollToNote();
+		NoteEntities[uid]?.blink();
+	}
+	
+	//设定笔记实体
+	function setEntities(uid,entity){
+		NoteEntities[uid]=entity;
+	}
+	
 	return {
 		init:init,
 		loadNote:loadNote,
 		newNote:newNote,
 		setNote:setNote,
-		removeNote:removeNote
+		removeNote:removeNote,
+		cloneNote:cloneNote,
+		locateNote:locateNote,
+		SendMessage:SendMessage,
+		createUID:createUID,
+		getWebObj:getWebObj
 	}
 	
 })();
@@ -181,7 +251,7 @@ function NoteFactory(noteObj){
 	
 	//笔记的div
 	let NoteParentDiv=null;//最外层的div
-	let HiddenDiv=[];//可以隐藏的div
+	let childDivs={};//子div
 	
 	
 	//----拖拽功能begin----
@@ -231,15 +301,15 @@ function NoteFactory(noteObj){
 	//获取原本存储的内容
 	function getPreInner(event){
 		let tg=event.target;
-		preInner=tg.innerHTML;
+		preInner=tg.innerText;
 	}
 	//内容改变自动保存功能
 	function changeNote(event){
 		let tg=event.target;
-		let newInner=tg.innerHTML;
+		let newInner=tg.innerText;
 		if(newInner!=preInner){
 			//如果和之前的内容不一样则保存
-			noteObj["content"]=tg.innerHTML;
+			noteObj["content"]=tg.innerText;
 			NoteManager.setNote(noteObj);
 			NoteParentDiv.title=tg.innerText;
 		}
@@ -249,6 +319,35 @@ function NoteFactory(noteObj){
 		ele.setAttribute("contenteditable","true");
 		ele.onblur=changeNote;
 		ele.onfocus=getPreInner;
+	}
+	//添加字数监测
+	function addWnumMonitor(ele){
+		//字数监测
+		const maxwnum=10;//最大字数上限
+		ele.addEventListener('keydown',(event)=>{
+			let tg=event.target;
+			tg.dataset.wnum=tg.innerText.length;
+			if(tg.innerText.length > maxwnum+10){
+				event.preventDefault();
+			}
+		});
+		ele.addEventListener('keyup',(event)=>{
+			let tg=event.target;
+			tg.dataset.wnum=tg.innerText.length;
+			if(tg.innerText.length > maxwnum+10){
+				let sel=window.getSelection();
+				sel.empty();
+				let range=new Range();
+			
+				tg.innerText=tg.innerText.substr(0,maxwnum);
+				range.selectNode(tg.firstChild);
+				sel.addRange(range);
+				sel.collapseToEnd();
+				
+				tg.dataset.wnum=tg.innerText.length;
+				event.preventDefault();
+			}
+		});
 	}
 	//----编辑保存功能end----
 	
@@ -274,15 +373,17 @@ function NoteFactory(noteObj){
 	let visibleStatue=true;
 	//显示
 	function show(){
-		for(let i in HiddenDiv){
-			HiddenDiv[i].style.display="var(--basedisplay)";
+		for(let i in childDivs){
+			childDivs[i].style.display="var(--basedisplay)";
 		}
 		visibleStatue=true;
 	}
 	//隐藏
 	function hid(){
-		for(let i in HiddenDiv){
-			HiddenDiv[i].style.display="none";
+		for(let i in childDivs){
+			if(i!='hidBtn'){
+				childDivs[i].style.display="none";
+			}
 		}
 		visibleStatue=false;
 	}
@@ -302,6 +403,35 @@ function NoteFactory(noteObj){
 	}
 	//----隐藏/显示功能end----
 	
+	//公开笔记设置
+	function addSetPublic(ele){
+		ele.ondblclick=()=>{
+			if(!noteObj.isPublic){
+				noteObj.isPublic=0;
+			}
+			
+			if(noteObj.isPublic==0){
+				if(window.confirm('是否将该笔记设置为公开笔记？')){
+					noteObj.isPublic=1;
+					NoteManager.setNote(noteObj);
+				}
+			}else{
+				if(window.confirm('是否将该笔记设置为不再公开？')){
+					noteObj.isPublic=0;
+					NoteManager.setNote(noteObj);
+				}
+			}
+			let infs="";
+			if(noteObj.createtime){
+				let tm=new Date(noteObj.createtime);
+				infs+="创建时间:"+tm.toLocaleString()+'\n';
+				if(noteObj?.isPublic==1){
+					infs+="该笔记为公开笔记";
+				}
+			}
+			ele.title=infs;
+		}
+	}
 	
 	
 	//创建相关div
@@ -312,27 +442,27 @@ function NoteFactory(noteObj){
 		NOTE_OPTION.setElement(NoteParentDiv);
 		NoteParentDiv.style.top=noteObj["position"]["top"];
 		NoteParentDiv.style.left=noteObj["position"]["left"];
-		NoteParentDiv.dataset.permission=noteObj["permission"];
-		NoteParentDiv.dataset.ownerId=noteObj["ownerId"];
-		NoteParentDiv.dataset.ownerName=noteObj["ownerName"];
 		addDragFunc(NoteParentDiv);//添加拖拽功能
-		
+		NoteParentDiv.dataset.uid=noteObj.uid;
+		NoteParentDiv.oncontextmenu=show;
 		
 		//内部主题创建
 		let NoteBody=document.createElement("div");
 		NoteBody.classList.add('weshareNoteBody');
-		NoteBody.innerHTML=noteObj["content"];
+		NoteBody.innerText=noteObj["content"];
 		addEditFunc(NoteBody);//添加编辑功能
-		HiddenDiv.push(NoteBody);
+		addWnumMonitor(NoteBody);//添加字数监测
+		childDivs['NoteBody']=NoteBody;
+		NoteBody.dataset.wnum=NoteBody.innerText.length;
 		
 		NoteParentDiv.title=NoteBody.innerText;
 		
 		//隐藏/展开图标
 		let hidBtn=document.createElement('div');
 		hidBtn.classList.add('weshareNoteIcon');
-		hidBtn.innerHTML="💬";
+		hidBtn.innerHTML=NOTE_OPTION.ICON[0];
 		addChangeVisibleFunc(hidBtn);
-		
+		childDivs['hidBtn']=hidBtn;
 		
 		//删除图标
 		let delBtn=document.createElement('div');
@@ -340,25 +470,403 @@ function NoteFactory(noteObj){
 		delBtn.innerHTML="🗑️";
 		addDeleteFunc(delBtn);
 		delBtn.title="双击删除笔记";
-		HiddenDiv.push(delBtn);
+		childDivs['delBtn']=delBtn;
+		
+		//信息图标
+		let infBtn=document.createElement('div');
+		infBtn.classList.add('weshareNoteIcon');
+		infBtn.innerHTML="📅";
+		let infs="";
+		if(noteObj.createtime){
+			let tm=new Date(noteObj.createtime);
+			infs+="创建时间:"+tm.toLocaleString()+'\n';
+			if(noteObj?.isPublic==1){
+				infs+="该笔记为公开笔记";
+			}
+		}
+		infBtn.title=infs;
+		addSetPublic(infBtn);
+		childDivs['infBtn']=infBtn;
 		
 		//放入父div中
 		NoteParentDiv.appendChild(hidBtn);
 		NoteParentDiv.appendChild(delBtn);
+		NoteParentDiv.appendChild(infBtn);
 		NoteParentDiv.appendChild(NoteBody);
 		
 		//父div放入body中
 		document.body.appendChild(NoteParentDiv);
+		
+		return NoteParentDiv;
 	}
 	
+	
+	//获取父div
+	function getParentDiv(){
+		return NoteParentDiv;
+	}
+	
+	//获取子divs
+	function getChildDivs(){
+		return childDivs;
+	}
+	
+	//闪烁
+	function blink(){
+		show();
+		NoteParentDiv.animate({
+			opacity: [ 0,1 ]
+		},{
+			duration: 500,
+			iterations: 4,
+		});
+	}
+	
+	//滚动到笔记位置
+	function scrollToNote(){
+		let ht=document.documentElement.clientHeight || document.body.clientHeight;
+		window.scrollTo({left:NoteParentDiv.offsetLeft,top:NoteParentDiv.offsetTop-ht/4,behavior:'smooth'});
+	}
 	
 	return {
 		createNoteDiv:createNoteDiv,
 		changeVisible:changeVisible,
 		show:show,
-		hid:hid
+		hid:hid,
+		getParentDiv:getParentDiv,
+		getChildDivs:getChildDivs,
+		blink:blink,
+		scrollToNote:scrollToNote
 	}
 }
+
+//PublicNoteManager管理当前页面的公开笔记
+let PublicNoteManager=(()=>{
+	
+	let parentDiv;//父div
+	let childDivs={};//子divs
+	let bodyDiv;//主体div
+	//该页面公开笔记
+	let publicNotes=[];
+	let notesIndex=0;//当前笔记index
+	let indexDiv;//显示index的div框
+	let infDiv;//信息框
+	let likeBtn;//like按钮
+	
+	//下一个index
+	function nextIndex(){
+		notesIndex++;
+		if(notesIndex>=publicNotes.length){
+			notesIndex=0;
+		}
+	}
+	
+	//上一个index
+	function prevIndex(){
+		notesIndex--;
+		if(notesIndex<0){
+			notesIndex=publicNotes.length-1;
+		}
+	}
+	
+	//根据index更新Div内容
+	function updateDiv(){
+		if(publicNotes.length<=0){
+			bodyDiv.innerHTML="此页面暂无公开笔记";
+			bodyDiv.dataset.wnum=0;
+			indexDiv.innerHTML="0/0";
+			infDiv.title="暂无信息";
+			const scrollTop = document.documentElement.scrollTop || document.body.scrollTop;
+			const scrollLeft = document.documentElement.scrollLeft || document.body.scrollLeft;
+			
+			parentDiv.style.top=Number(scrollTop)+Number(100)+"px";
+			parentDiv.style.left=Number(scrollLeft)+Number(100)+"px";
+			
+			return;
+		}
+				
+		let noteObj=publicNotes[notesIndex];
+		bodyDiv.innerText=noteObj.content;//笔记body更新
+		bodyDiv.dataset.wnum=bodyDiv.innerText.length;
+		indexDiv.innerHTML=(notesIndex+1)+"/"+publicNotes.length;//index更新 
+		
+		//信息更新
+		let infs="";
+		if(noteObj.ownerName){
+			infs+="创建者:"+noteObj.ownerName+"\n";
+		}
+		if(noteObj.createtime){
+			let tm=new Date(noteObj.createtime);
+			infs+="创建时间:"+tm.toLocaleString();
+		}
+		infDiv.title=infs;
+		
+		//like更新
+		if(noteObj.like && noteObj.like=='like'){
+			likeBtn.innerHTML="❤️";
+		}else{
+			likeBtn.innerHTML="🤍";
+		}
+		//likenum更新
+		if(noteObj.likenum){
+			likeBtn.title=noteObj.likenum+" likes";
+		}else{
+			likeBtn.title="0 likes";
+		}
+		
+		
+		let pos=noteObj.position;
+		if(pos&&pos.top){
+			let top_=pos.top;
+			let left=pos.left;
+			parentDiv.style.top=top_;
+			parentDiv.style.left=left;
+			let ht=document.documentElement.clientHeight || document.body.clientHeight;
+			window.scrollTo({left:parentDiv.offsetLeft,top:parentDiv.offsetTop-ht/4,behavior:'smooth'});
+		}
+	}
+	
+	//发信息
+	async function SendMessage(messageObj){
+		await chrome.runtime.sendMessage({op:OPERATION_CODE_NOTE.NO_ACTION});
+		let res = await chrome.runtime.sendMessage(messageObj);
+		return res;
+	}
+	
+	
+	//获取webURL
+	function getWebUrl(){
+		return window.location.href;
+	}
+	
+	
+	//载入公开笔记
+	async function load(){
+		let tp=await SendMessage({op:OPERATION_CODE_NOTE.GET_PUBLIC_NOTE,url:getWebUrl()});
+		if(tp){
+			publicNotes=tp;
+		}
+		notesIndex=0;
+		console.log(publicNotes);
+		updateDiv();
+	}
+	
+	
+	//----隐藏/显示功能begin----
+	//可视状态
+	let visibleStatue=true;
+	//显示
+	function show(){
+		for(let i in childDivs){
+			childDivs[i].style.display="var(--basedisplay)";
+		}
+		visibleStatue=true;
+	}
+	//隐藏
+	function hid(){
+		for(let i in childDivs){
+			if(i!='hidBtn'){
+				childDivs[i].style.display="none";
+			}
+		}
+		visibleStatue=false;
+	}
+	//改变可视状态
+	function changeVisible(){
+		if(visibleStatue==true){
+			hid();
+		}else{
+			show();
+		}
+	}
+	//为元素增加改变可视状态功能
+	function addChangeVisibleFunc(ele){
+		ele.onclick=()=>{
+			changeVisible();
+		};
+	}
+	//----隐藏/显示功能end----
+	
+	//改变父元素显示状态
+	let hasLoad=false;
+	async function changeParentDivVisible(){
+		if(parentDiv.style.display=="none"){
+			if(!hasLoad){
+				await load();
+				hasLoad=true;
+			}
+			parentDiv.style.display="block";
+		}else{
+			parentDiv.style.display="none";
+		}
+		
+	}
+
+	
+	//----拖拽功能begin----
+	//拖拽参数
+	let xfix=0;
+	let yfix=0;
+	//拖拽开始
+	function dragNoteStart() {
+		let tg=parentDiv;
+		if(tg.dataset.draggable=="true"){
+			xfix = event.pageX - tg.offsetLeft;
+			yfix = event.pageY - tg.offsetTop;
+		}
+	}
+	//拖拽结束
+	function dragNoteEnd() {
+		let tg=parentDiv;
+		if(tg.dataset.draggable=="true"){
+			tg.style.left = event.pageX - xfix + "px";
+			tg.style.top = event.pageY - yfix + "px";
+		}
+	}
+	//增加拖拽功能
+	function addDragFunc(ele){
+		ele.dataset.draggable="true";
+		ele.setAttribute("draggable","true");
+		ele.addEventListener("dragstart",dragNoteStart);
+		ele.addEventListener("dragend",dragNoteEnd);
+	}
+	//----拖拽功能end----
+	
+	//like按钮点击
+	async function likeBtnClick(){
+		if(!publicNotes[notesIndex]){
+			return;
+		}
+		
+		let tg=publicNotes[notesIndex];
+		
+		if(tg.like && tg.like=='like' ){
+			delete tg.like;
+			likeBtn.innerHTML="🤍";
+			if(tg.likenum){
+				tg.likenum--;
+				likeBtn.title=tg.likenum+" likes";
+				if(tg.likenum<=0){
+					likeBtn.title="0 likes";
+					delete tg.likenum;
+				}
+			}
+			
+		}else{
+			publicNotes[notesIndex].like='like';
+			likeBtn.innerHTML="❤️";
+			if(tg.likenum){
+				tg.likenum++;
+			}else{
+				tg.likenum=1;
+			}
+			likeBtn.title=tg.likenum+" likes";
+			SendMessage({op:OPERATION_CODE_NOTE.LIKE_NOTE,uid:tg.uid});		
+		}
+	}
+
+	//初始化
+	function init(){
+		parentDiv=document.createElement('div');
+		parentDiv.classList.add('weshareNoteParentDiv');
+		NOTE_OPTION.setElement(parentDiv);
+		addDragFunc(parentDiv);
+		
+		//隐藏/展开图标
+		let hidBtn=document.createElement('div');
+		hidBtn.classList.add('weshareNoteIcon');
+		hidBtn.classList.add('weshareDashedBorder');
+		hidBtn.innerHTML="💬";
+		addChangeVisibleFunc(hidBtn);
+		parentDiv.appendChild(hidBtn);
+		childDivs['hidBtn']=hidBtn;
+		
+		//like栏
+		likeBtn=document.createElement('div');
+		likeBtn.classList.add('weshareNoteIcon');
+		likeBtn.classList.add('weshareDashedBorder');
+		likeBtn.innerHTML="🤍";
+		likeBtn.onclick=likeBtnClick;
+		childDivs['likeBtn']=likeBtn;
+		parentDiv.appendChild(likeBtn);
+		
+		//信息图标
+		infDiv=document.createElement('div');
+		infDiv.classList.add('weshareNoteIcon');
+		infDiv.classList.add('weshareDashedBorder');
+		infDiv.innerHTML="📅";
+		parentDiv.appendChild(infDiv);
+		childDivs['infDiv']=infDiv;
+		
+		//翻页栏
+		let pageline=document.createElement('div');
+		pageline.classList.add('weshareOpLine');
+		childDivs['pageline']=pageline;
+		//下一条笔记
+		let nextd=document.createElement('a');
+		nextd.style.display="inline-block";
+		nextd.innerHTML=">";
+		nextd.onclick=()=>{
+			nextIndex();
+			updateDiv();
+		};
+		
+		//前一条笔记
+		let pred=document.createElement('a');
+		pred.style.display="inline-block";
+		pred.innerHTML="<";
+		pred.onclick=()=>{
+			prevIndex();
+			updateDiv();
+		};
+		
+		//当前笔记index
+		indexDiv=document.createElement('div');
+		indexDiv.innerHTML="0/0";
+		indexDiv.style.display="inline-block";
+		
+		pageline.appendChild(pred);
+		pageline.appendChild(document.createTextNode("\xa0\xa0"));
+		pageline.appendChild(indexDiv);
+		pageline.appendChild(document.createTextNode("\xa0\xa0"));
+		pageline.appendChild(nextd);
+		pageline.appendChild(document.createTextNode("\xa0\xa0"));
+		
+		//克隆笔记功能
+		let cloneBtn=document.createElement('div');
+		cloneBtn.innerHTML="CLONE";
+		cloneBtn.style.display="inline-block";
+		cloneBtn.onclick=()=>{
+			if(publicNotes[notesIndex]){
+				NoteManager.cloneNote(publicNotes[notesIndex]);
+				if(publicNotes[notesIndex].position.top==parentDiv.style.top){
+					parentDiv.style.top=parentDiv.offsetTop+parentDiv.offsetHeight+"px";
+				}
+			}
+		};
+		pageline.appendChild(cloneBtn);
+		
+		
+		//内容主体
+		bodyDiv=document.createElement('div');
+		bodyDiv.classList.add('weshareNoteBody');
+		bodyDiv.classList.add('weshareDashedBorder');
+		childDivs['bodyDiv']=bodyDiv;
+		parentDiv.appendChild(bodyDiv);
+		
+		parentDiv.appendChild(pageline);
+		
+		parentDiv.style.display="none";
+		document.body.appendChild(parentDiv);
+	}
+
+	return {
+		init:init,
+		load:load,
+		changeParentDivVisible:changeParentDivVisible
+	}
+	
+})();
 
 
 
@@ -366,5 +874,6 @@ function NoteFactory(noteObj){
 (async function init(){
 	await chrome.runtime.sendMessage({op:OPERATION_CODE_NOTE.NO_ACTION});//唤醒一下background
 	await NOTE_OPTION.init();//必须先初始化设置
-	await NoteManager.init();
+	NoteManager.init();
+	PublicNoteManager.init();
 })();

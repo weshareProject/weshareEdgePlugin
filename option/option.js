@@ -13,8 +13,24 @@ const OPERATION_CODE_OPTION={
 	
 	//7xx为设置页面相关功能
 	GET_NOTE_WEB_URL:701,
+	
+	//9xx为云服务相关
+	LOGIN:901,
+	LOGOUT:902,
+	CLOUD_UPLOAD:903,
+	CLOUD_DOWNLOAD:904,
+	GET_USER_INFO:905,
+	
+	MANUAL_CLOUD:909
 
 };
+
+//发送信息
+async function SendMessage(message){
+	await chrome.runtime.sendMessage({op:OPERATION_CODE_OPTION.NO_ACTION});//唤醒background
+	let tp=await chrome.runtime.sendMessage(message);
+	return tp;
+}
 
 //页面笔记载入是否自动展开
 $('visibleshow').onclick=async ()=>{
@@ -46,6 +62,52 @@ $('visiblehid').onclick=async ()=>{
 })();
 
 
+//----图标设置begin----
+const ICON_BASE=["📌","📝","✒️","💬","📃"];
+function iconBtnFactory(icon){
+	let btn=document.createElement('div');
+	btn.classList.add('setBtn');
+	btn.innerHTML=icon;
+	async function checked(){
+		let btns=$('iconset').querySelectorAll('.setBtn');
+		
+		for(let i=0;i<btns.length;i++){
+			btns[i].style.borderColor="var(--unchecked)";
+			btns[i].style.color="var(--unchecked)";
+		}
+		btn.style.borderColor="var(--checked)";
+		btn.style.color="var(--checked)";
+		let sav={};
+		sav['icon']=icon;
+		await OPTION_STORAGE.set(sav);
+		
+		$('mainicon').innerHTML=icon;
+	}
+	
+	btn.onclick=checked;
+	
+	$('iconset').appendChild(btn);
+	
+	return btn;
+}
+//生成图标大小设定
+(async function iconSizeSetting(){
+	$('iconset').innerHTML="";
+	let icon="📌";
+	let tp=await OPTION_STORAGE.get("icon");
+	if(tp["icon"])icon=tp["icon"];
+	for(let i in ICON_BASE){
+		let btn=iconBtnFactory(ICON_BASE[i]);
+		if(ICON_BASE[i]==icon)btn.click();
+	}
+})();
+//----图标设置end----
+
+
+
+
+
+
 //----尺寸设置begin----
 //css样式基础尺寸
 const CSS_BASESIZE=[14,16,18,20,24];
@@ -54,13 +116,13 @@ const CSS_BASESIZE=[14,16,18,20,24];
 function sizeBtnFactory(btnObj){
 	let attr=btnObj.attr;
 	let value=btnObj.value;
-	let showval=btnObj.showval
+	let showval=btnObj.showval;
 	let btn=document.createElement('div');
 	btn.classList.add('setBtn');
 	btn.innerHTML=showval;
 	async function checked(){
 		let btns=$(attr).querySelectorAll('.setBtn');
-		console.log(btns);
+		
 		for(let i=0;i<btns.length;i++){
 			btns[i].style.borderColor="var(--unchecked)";
 			btns[i].style.color="var(--unchecked)";
@@ -164,44 +226,99 @@ function colorBtnFactory(cbtnObj){
 
 
 
-
-
-//获取有笔记的web的url
-async function getNoteWebUrl(){
-	let resp=await chrome.runtime.sendMessage({op:OPERATION_CODE_OPTION.GET_NOTE_WEB_URL});
-	return resp;
-}
 //展示记了笔记的网站
 async function weburlInit(){
-	let tp=await getNoteWebUrl();
+	let tp=await SendMessage({op:OPERATION_CODE_OPTION.GET_NOTE_WEB_URL});
 	let noteweb=$('noteweb');
-	if(tp=="{}"){
-		noteweb.innerHTML="<div style='color:red;font-size:1.5rem;'>暂无笔记</div>";
-	}else{
-		tp=JSON.parse(tp);
-		for(let i in tp){
-			let it=tp[i];
-			let url=it["url"];
-			let title=it['title'];
-			let num=it['num']
-			let dv=document.createElement('div');
-			dv.innerHTML="<span style='color:blue'>["+num+"笔记]</span>"+title;
-			dv.title=url;
-			dv.onclick=()=>{
-				chrome.tabs.create({url:url});
-			}
-			dv.classList.add("webitem");
-			noteweb.appendChild(dv);
+	let flag=true;
+	
+	for(let i in tp){
+		let it=tp[i];
+		let url=it["url"];
+		let title=it['title'];
+		if(!title)title=url;
+		let num=it['num'];
+		let dv=document.createElement('div');
+		dv.innerHTML="<span style='color:blue'>["+num+"笔记]</span>"+title;
+		dv.title=url;
+		dv.onclick=()=>{
+			chrome.tabs.create({url:url});
 		}
+		dv.classList.add("webitem");
+		noteweb.appendChild(dv);
+		flag=false;
+	}
+	if(flag){
+		noteweb.innerHTML="<div style='color:red;font-size:1.5rem;'>暂无笔记</div>";
 	}
 }
-(async ()=>{
-	await chrome.runtime.sendMessage({op:OPERATION_CODE_OPTION.NO_ACTION});//唤醒background
-	await weburlInit();
-})();
+
+weburlInit();
 
 //打开回收站
 $('recycleBin').onclick=async ()=>{
-	await chrome.runtime.sendMessage({op:OPERATION_CODE_OPTION.NO_ACTION});//唤醒background
+	await SendMessage({op:OPERATION_CODE_OPTION.NO_ACTION});
 	chrome.tabs.create({url:"/option/recycleBin.html"});
 };
+
+
+
+//----账户相关设置begin----
+//更新tips
+let tipsTimer=null;
+function makeTips(str){
+	$('tips').innerHTML=str;
+	if(tipsTimer){
+		clearTimeout(tipsTimer);
+	}
+	tipsTimer=setTimeout(()=>{
+		$('tips').innerHTML="";
+	},3000);
+}
+
+//切换显示面板
+async function checkAccountContent(){
+	let tp=await SendMessage({op:OPERATION_CODE_OPTION.GET_USER_INFO});
+	if(tp.token && tp.userName){
+		$('logincontent').style.display="none";
+		$('accountcontent').style.display="block";
+		$('nowaccount').innerHTML="当前账户:<span style='color:green'>"+tp.userName+"</span>";
+		if(!tipsTimer)makeTips("<span style='color:green'>账户已登录</span>");
+	}else{
+		$('logincontent').style.display="block";
+		$('accountcontent').style.display="none";
+		if(!tipsTimer)makeTips("<span style='color:red'>账户未登录</span>");
+	}
+};
+checkAccountContent();
+
+//登录
+$('loginBtn').onclick=async ()=>{
+	let userName=$('username').value;
+	let pass=$('pass').value;
+	let usr={userName:userName,pass:pass};
+	$('tips').innerHTML="<span style='color:purple'>请勿关闭浏览器<br>正在登录...</span>";
+	let rsp=await SendMessage({op:OPERATION_CODE_OPTION.LOGIN,user:usr});
+	makeTips(rsp);
+	await checkAccountContent();
+};
+
+//注销
+$('logoutBtn').onclick=async ()=>{
+	$('tips').innerHTML="<span style='color:purple'>请勿关闭浏览器<br>正在同步,请耐心等待...</span>";
+	let rsp=await SendMessage({op:OPERATION_CODE_OPTION.LOGOUT});
+	makeTips(rsp);
+	await checkAccountContent();
+};
+
+//手动同步
+$('manualcloud').onclick=async ()=>{
+	$('tips').innerHTML="<span style='color:purple'>请勿关闭浏览器<br>正在同步,请耐心等待...</span>";
+	let rsp=await SendMessage({op:OPERATION_CODE_OPTION.MANUAL_CLOUD});
+	makeTips(rsp);	
+}
+
+//----账户相关设置end----
+
+
+
