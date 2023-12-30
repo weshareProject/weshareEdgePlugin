@@ -74,6 +74,7 @@
 	white-space: pre-wrap;
 	
 	overflow:auto;
+	outline:none;
 }
 .weshareNoteBody::after{
 	display:block;
