@@ -12,8 +12,16 @@
 	font-size:0;
 	line-height:var(--iconsize);
 	
+	background-color:rgba(0,0,0,0);
+	
 	margin:0;
 	padding:0;
+	
+	width:auto;
+	height:auto;
+	
+	font-family:SimSun;
+	overflow:auto;
 	
 	/* (: */
 	z-index:2147483647;
@@ -35,6 +43,7 @@
 	background-color:var(--bgcolor);
 	
 	border-radius:50%;
+	padding:0;
 	
 	text-align:center;
 }
@@ -51,6 +60,8 @@
 	min-width:5em;
 	max-height:10em;
 	max-width:20em;
+	width:auto;
+	height:auto;
 	padding:0.3em;
 	box-sizing:content-box;
 	border:0.1em solid;
@@ -63,6 +74,7 @@
 	white-space: pre-wrap;
 	
 	overflow:auto;
+	outline:none;
 }
 .weshareNoteBody::after{
 	display:block;

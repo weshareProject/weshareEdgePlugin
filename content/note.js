@@ -323,7 +323,7 @@ function NoteFactory(noteObj){
 	//添加字数监测
 	function addWnumMonitor(ele){
 		//字数监测
-		const maxwnum=10;//最大字数上限
+		const maxwnum=800;//最大字数上限
 		ele.addEventListener('keydown',(event)=>{
 			let tg=event.target;
 			tg.dataset.wnum=tg.innerText.length;

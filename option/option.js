@@ -225,6 +225,21 @@ function colorBtnFactory(cbtnObj){
 //----颜色设置end----
 
 
+//尝试获取网页title
+async function tryGetTitle(url){
+	let title=null;
+	try{
+		let response=await fetch(url);
+		let txt=await response.text();
+		let doc=new DOMParser().parseFromString(txt, "text/html");
+		title=doc.title;
+	}catch(e){
+		console.log(e);
+		title=null;
+	}
+	return title;
+}
+
 
 //展示记了笔记的网站
 async function weburlInit(){
@@ -236,7 +251,10 @@ async function weburlInit(){
 		let it=tp[i];
 		let url=it["url"];
 		let title=it['title'];
-		if(!title)title=url;
+		if(!title){
+			title=await tryGetTitle(url);
+			if(!title)title=url;
+		}
 		let num=it['num'];
 		let dv=document.createElement('div');
 		dv.innerHTML="<span style='color:blue'>["+num+"笔记]</span>"+title;
