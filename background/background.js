@@ -460,6 +460,7 @@ let CloudServerManager=(()=>{
 		user.expirationTime=null;
 		if(response.ok){
 			ret+="<br>"+"logout";
+			AllNoteManager.clearAll();
 		}else{
 			ret+="<br>"+response.message;
 		}
@@ -700,7 +701,7 @@ let CloudServerManager=(()=>{
 
 	//初始化
 	async function init(){
-		loadWaitUploadNotes();
+		await loadWaitUploadNotes();
 		
 		let tp=await Storage.get("weshareUser");
 		if(tp["weshareUser"])user=JSON.parse(tp["weshareUser"]);
